@@ -202,9 +202,9 @@ const SettingsManager = (() => {
         // Save settings when button is clicked
         if (elements.saveSettingsBtn) {
             elements.saveSettingsBtn.addEventListener('click', async () => {
-                await saveCurrentSettings(elements);
+                const settings = await saveCurrentSettings(elements);
                 if (onSaved && typeof onSaved === 'function') {
-                    onSaved();
+                    onSaved(settings);
                 }
             });
         }
@@ -227,7 +227,23 @@ const SettingsManager = (() => {
 
         // Save to storage
         await StorageUtils.saveSettings(settings);
+
+        // Update the language badge in the UI
+        updateLanguageBadge(settings.solutionLanguage);
+
         return settings;
+    };
+
+    /**
+     * Updates the language badge in the UI
+     * @param {string} language The language to display
+     */
+    const updateLanguageBadge = (language) => {
+        // Find the language badge element
+        const langBadge = document.getElementById('current-lang-badge');
+        if (langBadge) {
+            langBadge.textContent = language || 'auto';
+        }
     };
 
     /**
@@ -270,45 +286,11 @@ const SettingsManager = (() => {
         saveCurrentSettings,
         showSaveSuccess,
         getTargetLanguage,
+        updateLanguageBadge,
         AI_SERVICES,
         PROGRAMMING_LANGUAGES
     };
 })();
-
-/**
- * Updates the language badge after saving settings
- * @param {Object} settings The saved settings
- */
-const updateUIAfterSave = (settings) => {
-    // Get the language badge element
-    const langBadge = document.getElementById('current-lang-badge');
-    if (langBadge) {
-        // Update the badge text based on the selected language
-        const language = settings.solutionLanguage === 'auto' ? 'auto' : settings.solutionLanguage;
-        langBadge.textContent = language;
-    }
-};
-
-// Then modify the saveCurrentSettings function to call this function
-const saveCurrentSettings = async (elements) => {
-    const settings = {
-        aiService: elements.aiServiceSelect ? elements.aiServiceSelect.value : 'openai',
-        apiKey: elements.apiKeyInput ? elements.apiKeyInput.value : '',
-        endpoint: elements.aiServiceSelect && elements.aiServiceSelect.value === 'custom' ?
-            (elements.endpointInput ? elements.endpointInput.value : '') : '',
-        solutionLanguage: elements.langSelect ? elements.langSelect.value : 'auto',
-        minimizedByDefault: false // Default value
-    };
-
-    // Save to storage
-    await StorageUtils.saveSettings(settings);
-
-    // Update UI elements
-    updateUIAfterSave(settings);
-
-    return settings;
-};
-
 
 // Make it available in the global scope for other modules
 window.SettingsManager = SettingsManager;

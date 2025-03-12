@@ -6,6 +6,30 @@
     <title>AI Coding Helper</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        /* Add styles for collapsible settings */
+        .settings-header {
+            cursor: pointer;
+            user-select: none;
+        }
+        .collapsed {
+            display: none;
+        }
+        .toggle-btn {
+            background: none;
+            border: none;
+            color: #0d6efd;
+            cursor: pointer;
+            padding: 8px 0;
+            font-size: 0.9rem;
+            width: 100%;
+            text-align: left;
+            margin-bottom: 10px;
+        }
+        .toggle-btn:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
 <body>
 <div class="popup-container container p-3" style="min-width: 320px;">
@@ -14,7 +38,13 @@
         <span class="badge bg-primary ms-2">v1.0</span>
     </div>
 
-    <div class="card bg-dark border-secondary mb-3">
+    <div class="text-center mb-3">
+        <p>Visit a LeetCode problem page and click "Get AI Help" to use the extension.</p>
+    </div>
+
+    <button id="settings-toggle" class="toggle-btn">⚙️ Show Settings</button>
+
+    <div id="settings-content" class="card bg-dark border-secondary mb-3">
         <div class="card-header">Settings</div>
         <div class="card-body">
             <!-- AI Service Selection -->
@@ -63,10 +93,6 @@
             <!-- Save Button -->
             <button id="save-settings" class="btn btn-primary w-100">Save Settings</button>
         </div>
-    </div>
-
-    <div class="text-center small text-secondary mt-3">
-        <p>Visit a LeetCode problem page and click "Get AI Help" to use the extension.</p>
     </div>
 </div>
 

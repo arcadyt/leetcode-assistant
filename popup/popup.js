@@ -10,6 +10,8 @@ const customEndpointGroup = document.getElementById('custom-endpoint-group');
 const customEndpointInput = document.getElementById('custom-endpoint');
 const languageSelect = document.getElementById('solution-lang-select');
 const saveButton = document.getElementById('save-settings');
+const settingsToggle = document.getElementById('settings-toggle');
+const settingsContent = document.getElementById('settings-content');
 
 // Default settings
 const DEFAULT_SETTINGS = {
@@ -72,8 +74,32 @@ function saveSettings() {
         // Remove the success message after a delay
         setTimeout(() => {
             successMessage.remove();
-        }, 4000);
+        }, 2000);
+
+        // Send message to update any open tabs with the new language
+        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+            if (tabs[0]) {
+                chrome.tabs.sendMessage(tabs[0].id, {
+                    action: "SETTINGS_UPDATED",
+                    settings: settings
+                });
+            }
+        });
     });
+}
+
+/**
+ * Toggle settings panel visibility
+ */
+function toggleSettings() {
+    settingsContent.classList.toggle('collapsed');
+
+    // Update the toggle button text/icon
+    if (settingsContent.classList.contains('collapsed')) {
+        settingsToggle.innerHTML = '⚙️ Show Settings';
+    } else {
+        settingsToggle.innerHTML = '⚙️ Hide Settings';
+    }
 }
 
 /**
@@ -86,6 +112,13 @@ function initialize() {
     // Set up event listeners
     aiServiceSelect.addEventListener('change', toggleCustomEndpointVisibility);
     saveButton.addEventListener('click', saveSettings);
+
+    // Add toggle functionality for settings
+    if (settingsToggle) {
+        settingsToggle.addEventListener('click', toggleSettings);
+        // Start with settings collapsed
+        toggleSettings();
+    }
 }
 
 // Initialize when the popup is loaded

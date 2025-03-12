@@ -27,6 +27,9 @@
             // Set up event listeners for the UI
             setupEventListeners();
 
+            // Update the language badge with the current setting
+            updateLanguageBadgeFromSettings();
+
             // Notify background script about the detected problem
             chrome.runtime.sendMessage({
                 action: "PROBLEM_DETECTED",
@@ -46,6 +49,15 @@
         if (helpButton) {
             helpButton.addEventListener('click', requestAiHelp);
         }
+    }
+
+    /**
+     * Updates the language badge based on current settings
+     */
+    async function updateLanguageBadgeFromSettings() {
+        const settings = await StorageUtils.getSettings();
+        const language = settings.solutionLanguage || 'auto';
+        UIManager.updateLanguageBadge(language);
     }
 
     /**
@@ -128,10 +140,15 @@
         }
     }
 
-    // Listen for messages from the background script
+    // Listen for messages from the background script or popup
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action === "UPDATE_AI_RESPONSE" && message.data) {
             UIManager.displayAiResponse(message.data);
+        }
+        else if (message.action === "SETTINGS_UPDATED" && message.settings) {
+            // Update the language badge when settings are updated from the popup
+            const language = message.settings.solutionLanguage || 'auto';
+            UIManager.updateLanguageBadge(language);
         }
 
         // Always return true for async response

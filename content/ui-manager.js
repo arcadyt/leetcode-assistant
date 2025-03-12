@@ -370,11 +370,16 @@ const UIManager = (() => {
         langContainer.appendChild(langLabel);
         langContainer.appendChild(langBadge);
 
-        // Create help button
+        // Create enhanced help button with better styling
         const getHelpBtn = document.createElement('button');
         getHelpBtn.textContent = 'Get AI Help';
         getHelpBtn.className = 'btn btn-primary btn-sm';
         getHelpBtn.id = 'get-ai-help-btn';
+
+        // Add additional inline styles to make it more prominent
+        getHelpBtn.style.fontWeight = '600';
+        getHelpBtn.style.padding = '0.5rem 1rem';
+        getHelpBtn.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
 
         // Add elements to footer
         actions.appendChild(langContainer);

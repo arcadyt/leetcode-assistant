@@ -13,7 +13,7 @@
             user-select: none;
         }
         .collapsed {
-            display: none;
+            display: none !important; /* Ensure this overrides other display settings */
         }
         .toggle-btn {
             background: none;
@@ -25,9 +25,11 @@
             width: 100%;
             text-align: left;
             margin-bottom: 10px;
+            display: flex;
+            align-items: center;
         }
         .toggle-btn:hover {
-            text-decoration: underline;
+            color: #0a58ca;
         }
     </style>
 </head>

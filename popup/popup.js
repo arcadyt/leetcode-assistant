@@ -76,6 +76,11 @@ function saveSettings() {
             successMessage.remove();
         }, 2000);
 
+        // Auto-collapse settings after saving
+        if (!settingsContent.classList.contains('collapsed')) {
+            toggleSettings();
+        }
+
         // Send message to update any open tabs with the new language
         chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
             if (tabs[0]) {
@@ -96,9 +101,9 @@ function toggleSettings() {
 
     // Update the toggle button text/icon
     if (settingsContent.classList.contains('collapsed')) {
-        settingsToggle.innerHTML = '⚙️ Show Settings';
+        settingsToggle.textContent = '⚙️ Show Settings';
     } else {
-        settingsToggle.innerHTML = '⚙️ Hide Settings';
+        settingsToggle.textContent = '⚙️ Hide Settings';
     }
 }
 
@@ -114,9 +119,10 @@ function initialize() {
     saveButton.addEventListener('click', saveSettings);
 
     // Add toggle functionality for settings
-    if (settingsToggle) {
-        settingsToggle.addEventListener('click', toggleSettings);
-        // Start with settings collapsed
+    settingsToggle.addEventListener('click', toggleSettings);
+
+    // Start with settings collapsed by default
+    if (!settingsContent.classList.contains('collapsed')) {
         toggleSettings();
     }
 }

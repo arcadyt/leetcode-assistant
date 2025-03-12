@@ -10,15 +10,6 @@ const responseCache = new Map();
 const MAX_CACHE_SIZE = 20;  // Maximum number of cached responses
 const CACHE_EXPIRY = 24 * 60 * 60 * 1000;  // Cache expiry time (24 hours)
 
-// Default settings - these should match the ones in storage-utils.js
-const DEFAULT_SETTINGS = {
-    aiService: 'openai',
-    apiKey: '',
-    endpoint: '',
-    solutionLanguage: 'auto',
-    minimizedByDefault: false
-};
-
 /**
  * Handles the AI assistance request
  * @param {Object} problemData Problem data
@@ -30,7 +21,7 @@ async function getAiAssistance(problemData, apiKey) {
         throw new Error("Invalid problem data");
     }
 
-    const { title, description, preferredLanguage, settings } = problemData;
+    const { title, description, difficulty, preferredLanguage, settings } = problemData;
     const language = preferredLanguage || 'python';
 
     // Check if we have a cached response
@@ -45,30 +36,23 @@ async function getAiAssistance(problemData, apiKey) {
         responseCache.delete(cacheKey);
     }
 
-    // Construct the prompt
-    const prompt = constructPrompt(title, description, language);
-
-    // Choose the appropriate API service
-    let response;
-    const aiService = settings?.aiService || DEFAULT_SETTINGS.aiService;
-
     try {
-        switch (aiService) {
-            case 'openai':
-                response = await callOpenAI(prompt, apiKey);
-                break;
-            case 'anthropic':
-                response = await callAnthropic(prompt, apiKey);
-                break;
-            case 'gemini':
-                response = await callGemini(prompt, apiKey);
-                break;
-            case 'custom':
-                response = await callCustomEndpoint(prompt, apiKey, settings?.endpoint);
-                break;
-            default:
-                throw new Error(`Unsupported AI service: ${aiService}`);
+        // Service type from settings or default to openai
+        const serviceType = settings?.aiService || 'openai';
+
+        // Build options object for the service
+        const options = {};
+
+        // Add endpoint for custom service
+        if (serviceType === 'custom' && settings?.endpoint) {
+            options.endpoint = settings.endpoint;
         }
+
+        // Get the prompt using AiService
+        const prompt = AiService.constructPrompt(title, description, language);
+
+        // Call the AI service
+        const response = await AiService.callService(serviceType, prompt, apiKey, options);
 
         // Format the response data
         const responseData = {
@@ -86,8 +70,6 @@ async function getAiAssistance(problemData, apiKey) {
         throw error;
     }
 }
-
-// Import AiService - in a Chrome extension it's imported through manifest.js
 
 /**
  * Caches the AI response

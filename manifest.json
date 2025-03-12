@@ -24,7 +24,7 @@
     "https://leetcode.com/*"
   ],
   "background": {
-    "service_worker": "background/background.js",
+    "service_worker": "background/service-loader.js",
     "type": "module"
   },
   "content_scripts": [
@@ -33,6 +33,14 @@
       "js": [
         "utils/storage-utils.js",
         "utils/text-processor.js",
+        "services/base-adapter.js",
+        "services/openai-adapter.js",
+        "services/anthropic-adapter.js",
+        "services/gemini-adapter.js",
+        "services/custom-adapter.js",
+        "services/adapter-factory.js",
+        "services/prompt-builder.js",
+        "services/ai-service.js",
         "content/problem-detector.js",
         "content/settings-manager.js",
         "content/ui-manager.js",

@@ -275,5 +275,40 @@ const SettingsManager = (() => {
     };
 })();
 
+/**
+ * Updates the language badge after saving settings
+ * @param {Object} settings The saved settings
+ */
+const updateUIAfterSave = (settings) => {
+    // Get the language badge element
+    const langBadge = document.getElementById('current-lang-badge');
+    if (langBadge) {
+        // Update the badge text based on the selected language
+        const language = settings.solutionLanguage === 'auto' ? 'auto' : settings.solutionLanguage;
+        langBadge.textContent = language;
+    }
+};
+
+// Then modify the saveCurrentSettings function to call this function
+const saveCurrentSettings = async (elements) => {
+    const settings = {
+        aiService: elements.aiServiceSelect ? elements.aiServiceSelect.value : 'openai',
+        apiKey: elements.apiKeyInput ? elements.apiKeyInput.value : '',
+        endpoint: elements.aiServiceSelect && elements.aiServiceSelect.value === 'custom' ?
+            (elements.endpointInput ? elements.endpointInput.value : '') : '',
+        solutionLanguage: elements.langSelect ? elements.langSelect.value : 'auto',
+        minimizedByDefault: false // Default value
+    };
+
+    // Save to storage
+    await StorageUtils.saveSettings(settings);
+
+    // Update UI elements
+    updateUIAfterSave(settings);
+
+    return settings;
+};
+
+
 // Make it available in the global scope for other modules
 window.SettingsManager = SettingsManager;

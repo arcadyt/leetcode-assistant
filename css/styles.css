@@ -45,23 +45,6 @@ body {
     display: none !important;
 }
 
-.toggle-btn {
-    background: none;
-    border: none;
-    color: #0d6efd;
-    cursor: pointer;
-    padding: 8px 0;
-    font-size: 0.9rem;
-    width: 100%;
-    text-align: left;
-    margin-bottom: 10px;
-    transition: color 0.2s;
-}
-
-.toggle-btn:hover {
-    color: #0a58ca;
-}
-
 /* Success message styles */
 .save-success {
     display: inline-block;
@@ -195,6 +178,45 @@ body {
 }
 
 /* Make sure popup has correct collapsed state styling */
-#settings-content.collapsed {
+.settings-content.collapsed {
     display: none !important;
+}
+
+.toggle-btn {
+    background: none;
+    border: none;
+    color: #f8f9fa;
+    cursor: pointer;
+    padding: 8px 0;
+    font-size: 0.9rem;
+    width: 100%;
+    text-align: left;
+    transition: color 0.2s;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.toggle-btn:hover {
+    color: #0d6efd;
+    background-color: rgba(13, 110, 253, 0.1);
+}
+
+/* Improve settings form appearance */
+.settings-form-group {
+    margin-bottom: 0.75rem;
+}
+
+/* Add spacing between labels and inputs */
+.form-label {
+    margin-bottom: 0.5rem !important;
+}
+
+/* Ensure form groups have consistent spacing */
+.mb-2 {
+    margin-bottom: 0.75rem !important;
+}
+
+/* Animation for collapsible content */
+.settings-content {
+    overflow: hidden;
+    transition: max-height 0.3s ease;
 }

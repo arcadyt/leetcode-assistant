@@ -34,16 +34,16 @@ const UIManager = (() => {
         const loading = createLoadingIndicator();
         content.appendChild(loading);
 
+        // Create settings toggle and content
+        const settingsSection = await createCollapsibleSettings();
+
         // Create actions footer
         const actions = createActionFooter();
-
-        // Get the settings form elements and load settings
-        const settings = await createAndLoadSettings();
 
         // Assemble panel
         aiHelperPanel.appendChild(header);
         aiHelperPanel.appendChild(content);
-        aiHelperPanel.appendChild(settings);
+        aiHelperPanel.appendChild(settingsSection);
         aiHelperPanel.appendChild(actions);
 
         // Create toggle button for minimized state
@@ -105,36 +105,47 @@ const UIManager = (() => {
     };
 
     /**
-     * Creates and configures settings section
+     * Creates and configures collapsible settings section
      * @returns {Promise<HTMLElement>} Settings section element
      */
-    const createAndLoadSettings = async () => {
+    const createCollapsibleSettings = async () => {
         const settingsSection = document.createElement('div');
-        settingsSection.className = 'p-3 border-top';
+        settingsSection.className = 'border-top';
 
-        // Simple panel that's always visible
-        const settingsHeader = document.createElement('h6');
-        settingsHeader.className = 'mb-3';
-        settingsHeader.textContent = 'Settings';
+        // Create the toggle header
+        const settingsToggle = document.createElement('button');
+        settingsToggle.className = 'toggle-btn w-100 text-start p-3';
+        settingsToggle.type = 'button';
+        settingsToggle.innerHTML = '⚙️ <span class="ms-2">Settings</span>';
 
-        // Create inline form with simpler layout
-        const form = document.createElement('form');
-        form.className = 'settings-form';
+        // Create the collapsible content
+        const settingsContent = document.createElement('div');
+        settingsContent.id = 'settings-content';
+        settingsContent.className = 'p-3 settings-content collapsed';
+
+        // Add toggle event
+        settingsToggle.addEventListener('click', () => {
+            settingsContent.classList.toggle('collapsed');
+            settingsToggle.innerHTML = settingsContent.classList.contains('collapsed')
+                ? '⚙️ <span class="ms-2">Show Settings</span>'
+                : '⚙️ <span class="ms-2">Hide Settings</span>';
+        });
 
         // Create form elements
         const formElements = createSettingsFormElements();
 
-        // Add all form elements to the form
-        Object.values(formElements.groups).forEach(group => {
-            form.appendChild(group);
-        });
+        // Add container to the settings content
+        settingsContent.appendChild(formElements.groups.formContainer);
+
+        // Add endpoint container after the main form elements
+        settingsContent.appendChild(formElements.groups.endpointContainer);
 
         // Add save button
-        form.appendChild(formElements.saveSettingsBtn);
+        settingsContent.appendChild(formElements.saveSettingsBtn);
 
-        // Add form to settings section
-        settingsSection.appendChild(settingsHeader);
-        settingsSection.appendChild(form);
+        // Assemble the settings section
+        settingsSection.appendChild(settingsToggle);
+        settingsSection.appendChild(settingsContent);
 
         // Load saved settings
         const settings = await StorageUtils.getSettings();
@@ -151,12 +162,17 @@ const UIManager = (() => {
      * @returns {Object} Object containing form elements and groups
      */
     const createSettingsFormElements = () => {
-        // AI Service Selection
-        const aiServiceGroup = document.createElement('div');
-        aiServiceGroup.className = 'mb-2';
+        // Create a container with a grid layout
+        const formContainer = document.createElement('div');
+        formContainer.style.display = 'grid';
+        formContainer.style.gridTemplateColumns = '120px 1fr';
+        formContainer.style.rowGap = '12px';
+        formContainer.style.columnGap = '10px';
+        formContainer.style.alignItems = 'center';
+        formContainer.style.marginBottom = '12px';
 
+        // AI Service Selection
         const aiServiceLabel = document.createElement('label');
-        aiServiceLabel.className = 'form-label d-block mb-1';
         aiServiceLabel.setAttribute('for', 'ai-service-select');
         aiServiceLabel.textContent = 'AI Service';
 
@@ -172,15 +188,8 @@ const UIManager = (() => {
             aiServiceSelect.appendChild(option);
         });
 
-        aiServiceGroup.appendChild(aiServiceLabel);
-        aiServiceGroup.appendChild(aiServiceSelect);
-
         // API Key input
-        const apiKeyGroup = document.createElement('div');
-        apiKeyGroup.className = 'mb-2';
-
         const apiKeyLabel = document.createElement('label');
-        apiKeyLabel.className = 'form-label d-block mb-1';
         apiKeyLabel.setAttribute('for', 'ai-api-key');
         apiKeyLabel.textContent = 'API Key';
 
@@ -190,17 +199,8 @@ const UIManager = (() => {
         apiKeyInput.id = 'ai-api-key';
         apiKeyInput.placeholder = 'Enter your API key';
 
-        apiKeyGroup.appendChild(apiKeyLabel);
-        apiKeyGroup.appendChild(apiKeyInput);
-
         // Custom endpoint input
-        const endpointGroup = document.createElement('div');
-        endpointGroup.className = 'mb-2';
-        endpointGroup.id = 'custom-endpoint-group';
-        endpointGroup.style.display = 'none';
-
         const endpointLabel = document.createElement('label');
-        endpointLabel.className = 'form-label d-block mb-1';
         endpointLabel.setAttribute('for', 'ai-endpoint');
         endpointLabel.textContent = 'Custom Endpoint';
 
@@ -210,15 +210,24 @@ const UIManager = (() => {
         endpointInput.id = 'ai-endpoint';
         endpointInput.placeholder = 'https://your-api-endpoint.com';
 
-        endpointGroup.appendChild(endpointLabel);
-        endpointGroup.appendChild(endpointInput);
+        // Create endpoint container for conditional display
+        const endpointContainer = document.createElement('div');
+        endpointContainer.id = 'custom-endpoint-group';
+        endpointContainer.style.display = 'none';
+        endpointContainer.style.gridColumn = '1 / span 2';
+
+        const endpointGrid = document.createElement('div');
+        endpointGrid.style.display = 'grid';
+        endpointGrid.style.gridTemplateColumns = '120px 1fr';
+        endpointGrid.style.columnGap = '10px';
+        endpointGrid.style.alignItems = 'center';
+
+        endpointGrid.appendChild(endpointLabel);
+        endpointGrid.appendChild(endpointInput);
+        endpointContainer.appendChild(endpointGrid);
 
         // Language selection
-        const langGroup = document.createElement('div');
-        langGroup.className = 'mb-2';
-
         const langLabel = document.createElement('label');
-        langLabel.className = 'form-label d-block mb-1';
         langLabel.setAttribute('for', 'solution-lang-select');
         langLabel.textContent = 'Solution Language';
 
@@ -234,22 +243,27 @@ const UIManager = (() => {
             langSelect.appendChild(option);
         });
 
-        langGroup.appendChild(langLabel);
-        langGroup.appendChild(langSelect);
-
-        // Save button
+        // Save button - full width
         const saveSettingsBtn = document.createElement('button');
         saveSettingsBtn.type = 'button';
         saveSettingsBtn.className = 'btn btn-primary btn-sm w-100 mt-2';
         saveSettingsBtn.id = 'save-settings-btn';
         saveSettingsBtn.textContent = 'Save Settings';
+        saveSettingsBtn.style.gridColumn = '1 / span 2';
 
+        // Assemble the grid
+        formContainer.appendChild(aiServiceLabel);
+        formContainer.appendChild(aiServiceSelect);
+        formContainer.appendChild(apiKeyLabel);
+        formContainer.appendChild(apiKeyInput);
+        formContainer.appendChild(langLabel);
+        formContainer.appendChild(langSelect);
+
+        // Return elements in an object structure
         return {
             groups: {
-                aiServiceGroup,
-                apiKeyGroup,
-                endpointGroup,
-                langGroup
+                formContainer,
+                endpointContainer
             },
             elements: {
                 aiServiceSelect,
@@ -274,9 +288,9 @@ const UIManager = (() => {
 
             // Show/hide custom endpoint based on selected service
             if (settings.aiService === 'custom') {
-                formElements.groups.endpointGroup.style.display = 'block';
+                formElements.groups.endpointContainer.style.display = 'grid';
             } else {
-                formElements.groups.endpointGroup.style.display = 'none';
+                formElements.groups.endpointContainer.style.display = 'none';
             }
         }
 
@@ -303,9 +317,9 @@ const UIManager = (() => {
         // Toggle custom endpoint visibility
         elements.aiServiceSelect.addEventListener('change', function() {
             if (this.value === 'custom') {
-                formElements.groups.endpointGroup.style.display = 'block';
+                formElements.groups.endpointContainer.style.display = 'grid';
             } else {
-                formElements.groups.endpointGroup.style.display = 'none';
+                formElements.groups.endpointContainer.style.display = 'none';
             }
         });
 
@@ -498,6 +512,21 @@ const UIManager = (() => {
       <p>Please set your API key in the settings section below.</p>
     `;
         content.appendChild(errorDiv);
+
+        // Expand settings if they're collapsed
+        const settingsContent = document.getElementById('settings-content');
+        const settingsToggle = settingsContent.previousElementSibling;
+
+        if (settingsContent.classList.contains('collapsed')) {
+            settingsContent.classList.remove('collapsed');
+            settingsToggle.innerHTML = '⚙️ <span class="ms-2">Hide Settings</span>';
+        }
+
+        // Focus on the API key input
+        const apiKeyInput = document.getElementById('ai-api-key');
+        if (apiKeyInput) {
+            apiKeyInput.focus();
+        }
     };
 
     /**

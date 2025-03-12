@@ -47,3 +47,8 @@ class GeminiAdapter extends BaseAiAdapter {
         return `Gemini API error: ${error.message || 'Unknown error'}`;
     }
 }
+
+// Make available in current context (works in both service worker and browser)
+if (typeof self !== 'undefined') {
+    self.GeminiAdapter = GeminiAdapter;
+}

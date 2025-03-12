@@ -47,3 +47,8 @@ class OpenAiAdapter extends BaseAiAdapter {
         return `OpenAI API error: ${error.message || 'Unknown error'}`;
     }
 }
+
+// Make available in current context (works in both service worker and browser)
+if (typeof self !== 'undefined') {
+    self.OpenAiAdapter = OpenAiAdapter;
+}

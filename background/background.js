@@ -3,6 +3,23 @@
  * Background script for the extension that handles API communication
  */
 
+// Load service scripts in correct order
+try {
+    importScripts(
+        '../services/base-adapter.js',
+        '../services/openai-adapter.js',
+        '../services/anthropic-adapter.js',
+        '../services/gemini-adapter.js',
+        '../services/custom-adapter.js',
+        '../services/adapter-factory.js',
+        '../services/prompt-builder.js',
+        '../services/ai-service.js'
+    );
+    console.log('Successfully loaded service scripts');
+} catch (e) {
+    console.error('Error loading service scripts:', e);
+}
+
 // Cache for AI responses
 const responseCache = new Map();
 
@@ -138,3 +155,5 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             sendResponse({ success: false, error: 'Unknown action' });
     }
 });
+
+console.log('AI Coding Helper background script loaded');

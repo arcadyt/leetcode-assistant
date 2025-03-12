@@ -1,3 +1,8 @@
+/**
+ * anthropic-adapter.js
+ * Adapter for Anthropic's Claude API
+ */
+
 class AnthropicAdapter extends BaseAiAdapter {
     /**
      * Calls Anthropic's API
@@ -40,4 +45,9 @@ class AnthropicAdapter extends BaseAiAdapter {
     formatError(error) {
         return `Anthropic API error: ${error.message || 'Unknown error'}`;
     }
+}
+
+// Make available in current context (works in both service worker and browser)
+if (typeof self !== 'undefined') {
+    self.AnthropicAdapter = AnthropicAdapter;
 }

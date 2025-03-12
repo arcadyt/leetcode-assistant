@@ -27,3 +27,8 @@ class AiAdapterFactory {
         }
     }
 }
+
+// Make available in current context (works in both service worker and browser)
+if (typeof self !== 'undefined') {
+    self.AiAdapterFactory = AiAdapterFactory;
+}

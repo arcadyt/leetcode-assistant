@@ -43,7 +43,20 @@ const AiService = (() => {
     };
 })();
 
-// Make it available for the background script
+// Make it available in a way that works in both browser and service worker contexts
+if (typeof window !== 'undefined') {
+    // Browser context (content scripts)
+    window.AiService = AiService;
+    window.AiAdapterFactory = AiAdapterFactory;
+    window.PromptBuilder = PromptBuilder;
+} else if (typeof self !== 'undefined') {
+    // Service worker context
+    self.AiService = AiService;
+    self.AiAdapterFactory = AiAdapterFactory;
+    self.PromptBuilder = PromptBuilder;
+}
+
+// Support CommonJS modules if available
 if (typeof module !== 'undefined') {
     module.exports = {
         AiService,
@@ -55,8 +68,4 @@ if (typeof module !== 'undefined') {
         GeminiAdapter,
         CustomAdapter
     };
-} else {
-    window.AiService = AiService;
-    window.AiAdapterFactory = AiAdapterFactory;
-    window.PromptBuilder = PromptBuilder;
 }

@@ -37,17 +37,25 @@ const SettingsManager = (() => {
         // AI Service Selection
         const aiServiceGroup = document.createElement('div');
         aiServiceGroup.className = 'mb-3';
+        aiServiceGroup.style.marginBottom = '1rem'; // Ensure margin is applied
 
         const aiServiceLabel = document.createElement('label');
-        aiServiceLabel.className = 'form-label';
         aiServiceLabel.setAttribute('for', 'ai-service-select');
         aiServiceLabel.textContent = 'AI Service';
+        aiServiceLabel.style.display = 'block'; // Ensure label is visible
+        aiServiceLabel.style.marginBottom = '0.5rem';
 
         const aiServiceSelect = document.createElement('select');
-        aiServiceSelect.className = 'form-select form-select-sm';
         aiServiceSelect.id = 'ai-service-select';
+        aiServiceSelect.style.display = 'block'; // Ensure select is visible
+        aiServiceSelect.style.width = '100%';
+        aiServiceSelect.style.padding = '0.375rem 0.75rem';
+        aiServiceSelect.style.border = '1px solid #495057';
+        aiServiceSelect.style.borderRadius = '0.25rem';
+        aiServiceSelect.style.backgroundColor = '#2b3035';
+        aiServiceSelect.style.color = '#f8f9fa';
 
-        // Add AI service options
+        // Add options with inline styles
         AI_SERVICES.forEach(service => {
             const option = document.createElement('option');
             option.value = service.value;

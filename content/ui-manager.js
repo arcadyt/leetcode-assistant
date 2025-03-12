@@ -1,6 +1,6 @@
 /**
  * ui-manager.js
- * Manages the UI components of the extension
+ * Manages the UI components of the extension following SOLID principles
  */
 
 const UIManager = (() => {
@@ -9,7 +9,7 @@ const UIManager = (() => {
 
     /**
      * Creates and injects the AI Helper Panel UI
-     * @returns {HTMLElement} The created panel
+     * @returns {Promise<HTMLElement>} The created panel
      */
     const createAIHelperPanel = async () => {
         // Check if panel already exists
@@ -34,16 +34,16 @@ const UIManager = (() => {
         const loading = createLoadingIndicator();
         content.appendChild(loading);
 
-        // Create settings section
-        const settingsSection = createSettingsSection();
-
         // Create actions footer
         const actions = createActionFooter();
+
+        // Get the settings form elements and load settings
+        const settings = await createAndLoadSettings();
 
         // Assemble panel
         aiHelperPanel.appendChild(header);
         aiHelperPanel.appendChild(content);
-        aiHelperPanel.appendChild(settingsSection);
+        aiHelperPanel.appendChild(settings);
         aiHelperPanel.appendChild(actions);
 
         // Create toggle button for minimized state
@@ -53,12 +53,9 @@ const UIManager = (() => {
         document.body.appendChild(aiHelperPanel);
         document.body.appendChild(toggleBtn);
 
-        // Add Bootstrap JS for collapse functionality if needed
-        ensureBootstrapJsLoaded();
-
         // Initialize settings from storage
-        const settings = await StorageUtils.getSettings();
-        if (settings.minimizedByDefault) {
+        const userSettings = await StorageUtils.getSettings();
+        if (userSettings.minimizedByDefault) {
             aiHelperPanel.classList.add('minimized');
         }
 
@@ -108,47 +105,245 @@ const UIManager = (() => {
     };
 
     /**
-     * Creates the settings section with collapsible content
-     * @returns {HTMLElement} The settings section element
+     * Creates and configures settings section
+     * @returns {Promise<HTMLElement>} Settings section element
      */
-    const createSettingsSection = () => {
+    const createAndLoadSettings = async () => {
         const settingsSection = document.createElement('div');
-        settingsSection.className = 'mb-3 px-3';
+        settingsSection.className = 'p-3 border-top';
 
-        const settingsToggle = document.createElement('button');
-        settingsToggle.className = 'btn btn-sm btn-outline-secondary w-100 mb-2';
-        settingsToggle.textContent = 'Settings';
-        settingsToggle.setAttribute('data-bs-toggle', 'collapse');
-        settingsToggle.setAttribute('data-bs-target', '#aiHelperSettings');
-        settingsToggle.setAttribute('aria-expanded', 'false');
-        settingsToggle.setAttribute('aria-controls', 'aiHelperSettings');
+        // Simple panel that's always visible
+        const settingsHeader = document.createElement('h6');
+        settingsHeader.className = 'mb-3';
+        settingsHeader.textContent = 'Settings';
 
-        const settingsContent = document.createElement('div');
-        settingsContent.className = 'collapse';
-        settingsContent.id = 'aiHelperSettings';
+        // Create inline form with simpler layout
+        const form = document.createElement('form');
+        form.className = 'settings-form';
 
-        // Create all settings elements
-        const settingsElements = SettingsManager.createSettingsElements();
+        // Create form elements
+        const formElements = createSettingsFormElements();
 
-        // Add elements to settings content
-        settingsContent.appendChild(settingsElements.aiServiceGroup);
-        settingsContent.appendChild(settingsElements.apiKeyGroup);
-        settingsContent.appendChild(settingsElements.endpointGroup);
-        settingsContent.appendChild(settingsElements.langGroup);
-        settingsContent.appendChild(settingsElements.saveSettingsBtn);
-
-        // Load saved settings into form
-        SettingsManager.loadSettingsIntoForm(settingsElements);
-
-        // Set up event listeners
-        SettingsManager.setupSettingsListeners(settingsElements, () => {
-            SettingsManager.showSaveSuccess(settingsContent);
+        // Add all form elements to the form
+        Object.values(formElements.groups).forEach(group => {
+            form.appendChild(group);
         });
 
-        settingsSection.appendChild(settingsToggle);
-        settingsSection.appendChild(settingsContent);
+        // Add save button
+        form.appendChild(formElements.saveSettingsBtn);
+
+        // Add form to settings section
+        settingsSection.appendChild(settingsHeader);
+        settingsSection.appendChild(form);
+
+        // Load saved settings
+        const settings = await StorageUtils.getSettings();
+        updateFormWithSettings(formElements, settings);
+
+        // Set up event handlers
+        setupSettingsEventHandlers(formElements);
 
         return settingsSection;
+    };
+
+    /**
+     * Creates the settings form elements
+     * @returns {Object} Object containing form elements and groups
+     */
+    const createSettingsFormElements = () => {
+        // AI Service Selection
+        const aiServiceGroup = document.createElement('div');
+        aiServiceGroup.className = 'mb-2';
+
+        const aiServiceLabel = document.createElement('label');
+        aiServiceLabel.className = 'form-label d-block mb-1';
+        aiServiceLabel.setAttribute('for', 'ai-service-select');
+        aiServiceLabel.textContent = 'AI Service';
+
+        const aiServiceSelect = document.createElement('select');
+        aiServiceSelect.className = 'form-select form-select-sm';
+        aiServiceSelect.id = 'ai-service-select';
+
+        // Add AI service options
+        SettingsManager.AI_SERVICES.forEach(service => {
+            const option = document.createElement('option');
+            option.value = service.value;
+            option.textContent = service.label;
+            aiServiceSelect.appendChild(option);
+        });
+
+        aiServiceGroup.appendChild(aiServiceLabel);
+        aiServiceGroup.appendChild(aiServiceSelect);
+
+        // API Key input
+        const apiKeyGroup = document.createElement('div');
+        apiKeyGroup.className = 'mb-2';
+
+        const apiKeyLabel = document.createElement('label');
+        apiKeyLabel.className = 'form-label d-block mb-1';
+        apiKeyLabel.setAttribute('for', 'ai-api-key');
+        apiKeyLabel.textContent = 'API Key';
+
+        const apiKeyInput = document.createElement('input');
+        apiKeyInput.type = 'password';
+        apiKeyInput.className = 'form-control form-control-sm';
+        apiKeyInput.id = 'ai-api-key';
+        apiKeyInput.placeholder = 'Enter your API key';
+
+        apiKeyGroup.appendChild(apiKeyLabel);
+        apiKeyGroup.appendChild(apiKeyInput);
+
+        // Custom endpoint input
+        const endpointGroup = document.createElement('div');
+        endpointGroup.className = 'mb-2';
+        endpointGroup.id = 'custom-endpoint-group';
+        endpointGroup.style.display = 'none';
+
+        const endpointLabel = document.createElement('label');
+        endpointLabel.className = 'form-label d-block mb-1';
+        endpointLabel.setAttribute('for', 'ai-endpoint');
+        endpointLabel.textContent = 'Custom Endpoint';
+
+        const endpointInput = document.createElement('input');
+        endpointInput.type = 'text';
+        endpointInput.className = 'form-control form-control-sm';
+        endpointInput.id = 'ai-endpoint';
+        endpointInput.placeholder = 'https://your-api-endpoint.com';
+
+        endpointGroup.appendChild(endpointLabel);
+        endpointGroup.appendChild(endpointInput);
+
+        // Language selection
+        const langGroup = document.createElement('div');
+        langGroup.className = 'mb-2';
+
+        const langLabel = document.createElement('label');
+        langLabel.className = 'form-label d-block mb-1';
+        langLabel.setAttribute('for', 'solution-lang-select');
+        langLabel.textContent = 'Solution Language';
+
+        const langSelect = document.createElement('select');
+        langSelect.className = 'form-select form-select-sm';
+        langSelect.id = 'solution-lang-select';
+
+        // Add programming language options
+        SettingsManager.PROGRAMMING_LANGUAGES.forEach(lang => {
+            const option = document.createElement('option');
+            option.value = lang.value;
+            option.textContent = lang.label;
+            langSelect.appendChild(option);
+        });
+
+        langGroup.appendChild(langLabel);
+        langGroup.appendChild(langSelect);
+
+        // Save button
+        const saveSettingsBtn = document.createElement('button');
+        saveSettingsBtn.type = 'button';
+        saveSettingsBtn.className = 'btn btn-primary btn-sm w-100 mt-2';
+        saveSettingsBtn.id = 'save-settings-btn';
+        saveSettingsBtn.textContent = 'Save Settings';
+
+        return {
+            groups: {
+                aiServiceGroup,
+                apiKeyGroup,
+                endpointGroup,
+                langGroup
+            },
+            elements: {
+                aiServiceSelect,
+                apiKeyInput,
+                endpointInput,
+                langSelect
+            },
+            saveSettingsBtn
+        };
+    };
+
+    /**
+     * Updates form elements with saved settings
+     * @param {Object} formElements Form elements
+     * @param {Object} settings Settings object
+     */
+    const updateFormWithSettings = (formElements, settings) => {
+        const { elements } = formElements;
+
+        if (elements.aiServiceSelect && settings.aiService) {
+            elements.aiServiceSelect.value = settings.aiService;
+
+            // Show/hide custom endpoint based on selected service
+            if (settings.aiService === 'custom') {
+                formElements.groups.endpointGroup.style.display = 'block';
+            } else {
+                formElements.groups.endpointGroup.style.display = 'none';
+            }
+        }
+
+        if (elements.apiKeyInput && settings.apiKey) {
+            elements.apiKeyInput.value = settings.apiKey;
+        }
+
+        if (elements.endpointInput && settings.endpoint) {
+            elements.endpointInput.value = settings.endpoint;
+        }
+
+        if (elements.langSelect && settings.solutionLanguage) {
+            elements.langSelect.value = settings.solutionLanguage;
+        }
+    };
+
+    /**
+     * Sets up event handlers for settings form
+     * @param {Object} formElements Form elements
+     */
+    const setupSettingsEventHandlers = (formElements) => {
+        const { elements, saveSettingsBtn } = formElements;
+
+        // Toggle custom endpoint visibility
+        elements.aiServiceSelect.addEventListener('change', function() {
+            if (this.value === 'custom') {
+                formElements.groups.endpointGroup.style.display = 'block';
+            } else {
+                formElements.groups.endpointGroup.style.display = 'none';
+            }
+        });
+
+        // Save settings button
+        saveSettingsBtn.addEventListener('click', async () => {
+            const settings = {
+                aiService: elements.aiServiceSelect.value,
+                apiKey: elements.apiKeyInput.value,
+                endpoint: elements.aiServiceSelect.value === 'custom' ? elements.endpointInput.value : '',
+                solutionLanguage: elements.langSelect.value,
+                minimizedByDefault: false // Default value
+            };
+
+            // Save settings
+            await StorageUtils.saveSettings(settings);
+
+            // Show success message
+            showSettingsSaveSuccess(saveSettingsBtn);
+        });
+    };
+
+    /**
+     * Shows success message after settings save
+     * @param {HTMLElement} element Element to show success message near
+     */
+    const showSettingsSaveSuccess = (element) => {
+        // Create success message
+        const successMessage = document.createElement('div');
+        successMessage.className = 'alert alert-success mt-2 py-1 small';
+        successMessage.textContent = 'Settings saved!';
+
+        // Add to DOM after the element
+        element.parentNode.insertBefore(successMessage, element.nextSibling);
+
+        // Remove after delay
+        setTimeout(() => {
+            successMessage.remove();
+        }, 2000);
     };
 
     /**
@@ -157,19 +352,32 @@ const UIManager = (() => {
      */
     const createActionFooter = () => {
         const actions = document.createElement('div');
-        actions.className = 'card-footer d-flex justify-content-between';
+        actions.className = 'card-footer d-flex justify-content-between align-items-center';
+
+        // Create language label and badge in a container
+        const langContainer = document.createElement('div');
+        langContainer.className = 'd-flex align-items-center';
+
+        const langLabel = document.createElement('span');
+        langLabel.className = 'me-2 small';
+        langLabel.textContent = 'Language:';
 
         const langBadge = document.createElement('span');
         langBadge.id = 'current-lang-badge';
-        langBadge.className = 'badge bg-secondary align-self-center';
+        langBadge.className = 'badge bg-secondary';
         langBadge.textContent = 'auto';
 
+        langContainer.appendChild(langLabel);
+        langContainer.appendChild(langBadge);
+
+        // Create help button
         const getHelpBtn = document.createElement('button');
         getHelpBtn.textContent = 'Get AI Help';
-        getHelpBtn.className = 'btn btn-primary';
+        getHelpBtn.className = 'btn btn-primary btn-sm';
         getHelpBtn.id = 'get-ai-help-btn';
 
-        actions.appendChild(langBadge);
+        // Add elements to footer
+        actions.appendChild(langContainer);
         actions.appendChild(getHelpBtn);
 
         return actions;
@@ -191,19 +399,6 @@ const UIManager = (() => {
         });
 
         return toggleBtn;
-    };
-
-    /**
-     * Ensures Bootstrap JS is loaded for interactive components
-     */
-    const ensureBootstrapJsLoaded = () => {
-        if (!document.querySelector('script[src*="bootstrap.bundle.min.js"]')) {
-            const bootstrapScript = document.createElement('script');
-            bootstrapScript.src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js';
-            bootstrapScript.integrity = 'sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz';
-            bootstrapScript.crossOrigin = 'anonymous';
-            document.body.appendChild(bootstrapScript);
-        }
     };
 
     /**
@@ -298,15 +493,6 @@ const UIManager = (() => {
       <p>Please set your API key in the settings section below.</p>
     `;
         content.appendChild(errorDiv);
-
-        // Auto-expand settings
-        const settingsToggle = document.querySelector('[data-bs-target="#aiHelperSettings"]');
-        const settingsContent = document.getElementById('aiHelperSettings');
-
-        if (settingsToggle && settingsContent) {
-            settingsContent.classList.add('show');
-            settingsToggle.setAttribute('aria-expanded', 'true');
-        }
     };
 
     /**

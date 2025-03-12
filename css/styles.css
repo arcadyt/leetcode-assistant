@@ -1,0 +1,128 @@
+/*
+ * Consolidated styles for AI Coding Helper
+ * Default dark mode as requested
+ */
+
+/* Import Bootstrap CSS */
+@import url('https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css');
+
+/* Common customizations for dark mode */
+:root {
+    color-scheme: dark;
+}
+
+body {
+    background-color: #212529;
+    color: #f8f9fa;
+}
+
+.form-control, .form-select {
+    background-color: #2b3035;
+    color: #f8f9fa;
+    border-color: #495057;
+}
+
+.form-control:focus, .form-select:focus {
+    background-color: #2b3035;
+    color: #f8f9fa;
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.card {
+    background-color: #2b3035;
+    border-color: #495057;
+}
+
+/* Popup specific styles */
+.popup-container {
+    min-width: 320px;
+    min-height: 400px;
+}
+
+/* Success message styles */
+.save-success {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    border-radius: 0.25rem;
+    background-color: rgba(25, 135, 84, 0.2);
+    color: #198754;
+    animation: fadeOut 2s forwards;
+    animation-delay: 2s;
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+/* Content script specific styles */
+.ai-helper-panel {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 350px;
+    max-height: 500px;
+    border-radius: 8px;
+    z-index: 10000;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s ease;
+    background-color: #212529;
+    color: #f8f9fa;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Minimized panel state */
+.ai-helper-panel.minimized {
+    transform: translateY(calc(100% + 20px));
+}
+
+/* Toggle button for minimized state */
+.ai-helper-toggle {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: #0d6efd;
+    color: white;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 10000;
+}
+
+.ai-helper-panel.minimized + .ai-helper-toggle {
+    display: flex;
+}
+
+/* Code display styling */
+.ai-code-block {
+    position: relative;
+    background-color: #343a40;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+.ai-code-block pre {
+    padding: 12px;
+    margin: 0;
+    color: #f8f9fa;
+    overflow-x: auto;
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 13px;
+}
+
+.copy-code-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    padding: 2px 6px;
+    font-size: 12px;
+}

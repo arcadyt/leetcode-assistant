@@ -29,44 +29,48 @@ const CACHE_EXPIRY = 24 * 60 * 60 * 1000;  // Cache expiry time (24 hours)
 
 /**
  * Handles the AI assistance request
- * @param {Object} problemData Problem data
- * @param {string} apiKey API key for the service
+ * @param {Object} message Message containing request details
  * @returns {Promise<Object>} AI response
  */
-async function getAiAssistance(problemData, apiKey) {
-    if (!problemData) {
-        throw new Error("Invalid problem data");
+async function getAiAssistance(message) {
+    if (!message.problemData || !message.apiKey) {
+        throw new Error("Invalid request data");
     }
 
-    const { title, description, difficulty, preferredLanguage, settings } = problemData;
-    const language = preferredLanguage || 'python';
+    const { title, description, problemSlug } = message.problemData;
+    const requestType = message.requestType || 'solution';
+    const language = message.language || 'python';
+    const apiKey = message.apiKey;
+    const settings = message.settings || {};
 
-    // Check if we have a cached response
-    const cacheKey = `${problemData.problemSlug}_${language}`;
+    // Generate cache key
+    const cacheKey = `${problemSlug}_${requestType}_${language}`;
+
+    // Check for cached response
     if (responseCache.has(cacheKey)) {
         const cachedResponse = responseCache.get(cacheKey);
-        // Check if the cache is still valid
         if (Date.now() - cachedResponse.timestamp < CACHE_EXPIRY) {
             return cachedResponse;
         }
-        // Remove expired cache
         responseCache.delete(cacheKey);
     }
 
     try {
-        // Service type from settings or default to openai
-        const serviceType = settings?.aiService || 'openai';
-
-        // Build options object for the service
+        // Get service type and options
+        const serviceType = settings.aiService || 'openai';
         const options = {};
 
-        // Add endpoint for custom service
-        if (serviceType === 'custom' && settings?.endpoint) {
+        if (serviceType === 'custom' && settings.endpoint) {
             options.endpoint = settings.endpoint;
         }
 
-        // Get the prompt using AiService
-        const prompt = AiService.constructPrompt(title, description, language);
+        // Build the appropriate prompt based on request type
+        const prompt = AiService.constructPrompt(
+            title,
+            description,
+            language,
+            requestType
+        );
 
         // Call the AI service
         const response = await AiService.callService(serviceType, prompt, apiKey, options);
@@ -75,6 +79,7 @@ async function getAiAssistance(problemData, apiKey) {
         const responseData = {
             content: response,
             language: language,
+            requestType: requestType,
             timestamp: Date.now()
         };
 
@@ -130,7 +135,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         case 'GET_AI_HELP':
             // Get AI assistance for the problem
-            getAiAssistance(message.problemData, message.apiKey)
+            getAiAssistance(message)
                 .then(response => {
                     sendResponse({ success: true, data: response });
                 })

@@ -27,9 +27,6 @@
             // Set up event listeners for the UI
             setupEventListeners();
 
-            // Update the language badge with the current setting
-            updateLanguageBadgeFromSettings();
-
             // Notify background script about the detected problem
             chrome.runtime.sendMessage({
                 action: "PROBLEM_DETECTED",
@@ -44,26 +41,33 @@
      * Sets up event listeners for user interactions
      */
     function setupEventListeners() {
-        // Event listener for 'Get AI Help' button
-        const helpButton = document.getElementById('get-ai-help-btn');
-        if (helpButton) {
-            helpButton.addEventListener('click', requestAiHelp);
-        }
+        // Use event delegation for all button clicks in the panel
+        document.addEventListener('click', function(event) {
+            // Find the closest button that was clicked
+            const button = event.target.closest('button');
+            if (!button) return;
+
+            // Handle different button clicks based on ID
+            switch (button.id) {
+                case 'rephrase-problem-btn':
+                    requestProblemRephrase();
+                    break;
+                case 'get-hints-btn':
+                    requestHints();
+                    break;
+                case 'full-solution-btn':
+                    requestFullSolution();
+                    break;
+
+                // No default action needed
+            }
+        });
     }
 
     /**
-     * Updates the language badge based on current settings
+     * Handles the request for problem rephrasing
      */
-    async function updateLanguageBadgeFromSettings() {
-        const settings = await StorageUtils.getSettings();
-        const language = settings.solutionLanguage || 'auto';
-        UIManager.updateLanguageBadge(language);
-    }
-
-    /**
-     * Handles the request for AI assistance
-     */
-    async function requestAiHelp() {
+    async function requestProblemRephrase() {
         const problemData = ProblemDetector.getCurrentProblemData();
         if (!problemData) {
             console.error("No problem data available");
@@ -79,42 +83,111 @@
             return;
         }
 
-        // Get the target language
+        // Show loading state
+        UIManager.showLoading("Rephrasing problem...");
+
+        // Get the target language for context
         const targetLanguage = await SettingsManager.getTargetLanguage(problemData);
 
-        // Update UI to show language and loading state
-        UIManager.updateLanguageBadge(targetLanguage);
-        UIManager.showLoading();
-
-        // Check if we have a cached response
-        const cachedResponse = await StorageUtils.getAiResponse(problemData.problemSlug);
-        if (cachedResponse) {
-            // Check if the cached response is for the same language and is recent (less than 1 hour old)
-            const cacheTime = new Date(cachedResponse.timestamp).getTime();
-            const currentTime = new Date().getTime();
-            const oneHour = 60 * 60 * 1000;
-
-            if (cachedResponse.language === targetLanguage && (currentTime - cacheTime < oneHour)) {
-                console.log("Using cached AI response");
-                UIManager.displayAiResponse(cachedResponse);
-                return;
-            }
-        }
-
-        // Prepare enriched problem data with settings
-        const enrichedProblemData = {
-            ...problemData,
-            preferredLanguage: targetLanguage,
+        // Request AI assistance
+        chrome.runtime.sendMessage({
+            action: "GET_AI_HELP",
+            requestType: "rephrase",
+            problemData: {
+                title: problemData.title,
+                description: problemData.description,
+                problemSlug: problemData.problemSlug
+            },
             settings: {
                 aiService: settings.aiService || 'openai',
                 endpoint: settings.endpoint || ''
-            }
-        };
+            },
+            apiKey: settings.apiKey
+        }, handleAiResponse);
+    }
 
-        // Request AI assistance from background script
+    /**
+     * Handles the request for hints
+     */
+    async function requestHints() {
+        const problemData = ProblemDetector.getCurrentProblemData();
+        if (!problemData) {
+            console.error("No problem data available");
+            return;
+        }
+
+        // Get user settings
+        const settings = await StorageUtils.getSettings();
+
+        // Check if API key is set (except for custom endpoints)
+        if (!settings.apiKey && settings.aiService !== 'custom') {
+            UIManager.showApiKeyError();
+            return;
+        }
+
+        // Show loading state
+        UIManager.showLoading("Getting hints...");
+
+        // Get the target language
+        const targetLanguage = await SettingsManager.getTargetLanguage(problemData);
+
+        // Request AI assistance
         chrome.runtime.sendMessage({
             action: "GET_AI_HELP",
-            problemData: enrichedProblemData,
+            requestType: "hints",
+            problemData: {
+                title: problemData.title,
+                description: problemData.description,
+                problemSlug: problemData.problemSlug
+            },
+            language: targetLanguage,
+            settings: {
+                aiService: settings.aiService || 'openai',
+                endpoint: settings.endpoint || ''
+            },
+            apiKey: settings.apiKey
+        }, handleAiResponse);
+    }
+
+    /**
+     * Handles the request for full solution
+     */
+    async function requestFullSolution() {
+        const problemData = ProblemDetector.getCurrentProblemData();
+        if (!problemData) {
+            console.error("No problem data available");
+            return;
+        }
+
+        // Get user settings
+        const settings = await StorageUtils.getSettings();
+
+        // Check if API key is set (except for custom endpoints)
+        if (!settings.apiKey && settings.aiService !== 'custom') {
+            UIManager.showApiKeyError();
+            return;
+        }
+
+        // Show loading state
+        UIManager.showLoading("Getting full solution...");
+
+        // Get the target language
+        const targetLanguage = await SettingsManager.getTargetLanguage(problemData);
+
+        // Request AI assistance
+        chrome.runtime.sendMessage({
+            action: "GET_AI_HELP",
+            requestType: "solution",
+            problemData: {
+                title: problemData.title,
+                description: problemData.description,
+                problemSlug: problemData.problemSlug
+            },
+            language: targetLanguage,
+            settings: {
+                aiService: settings.aiService || 'openai',
+                endpoint: settings.endpoint || ''
+            },
             apiKey: settings.apiKey
         }, handleAiResponse);
     }
@@ -135,7 +208,28 @@
             // Display error message
             UIManager.showError(
                 response ? response.error : "Failed to get AI assistance",
-                requestAiHelp // Pass the requestAiHelp function as retry callback
+                () => {
+                    // Determine which function to retry based on the request type
+                    if (response && response.data && response.data.requestType) {
+                        switch (response.data.requestType) {
+                            case 'rephrase':
+                                requestProblemRephrase();
+                                break;
+                            case 'hints':
+                                requestHints();
+                                break;
+                            case 'solution':
+                                requestFullSolution();
+                                break;
+                            default:
+                                // Default to menu if type not recognized
+                                UIManager.showInitialHelp();
+                        }
+                    } else {
+                        // Return to menu if request type not available
+                        UIManager.showInitialHelp();
+                    }
+                }
             );
         }
     }
@@ -146,9 +240,8 @@
             UIManager.displayAiResponse(message.data);
         }
         else if (message.action === "SETTINGS_UPDATED" && message.settings) {
-            // Update the language badge when settings are updated from the popup
-            const language = message.settings.solutionLanguage || 'auto';
-            UIManager.updateLanguageBadge(language);
+            // Update the UI when settings are updated from the popup
+            UIManager.showInitialHelp();
         }
 
         // Always return true for async response

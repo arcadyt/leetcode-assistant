@@ -338,6 +338,9 @@ const UIManager = (() => {
 
             // Show success message
             showSettingsSaveSuccess(saveSettingsBtn);
+
+            // Update the menu with the new language
+            showInitialHelp();
         });
     };
 
@@ -361,44 +364,88 @@ const UIManager = (() => {
     };
 
     /**
-     * Creates the action footer with language badge and get help button
+     * Shows initial help content in the panel with buttons for each action
+     */
+    const showInitialHelp = async () => {
+        const content = aiHelperPanel.querySelector('.card-body');
+        if (!content) return;
+
+        content.innerHTML = '';
+
+        // Get current language setting for button text
+        const settings = await StorageUtils.getSettings();
+        const language = settings.solutionLanguage === 'auto' ? 'detected language' : settings.solutionLanguage;
+
+        const helpText = document.createElement('div');
+        helpText.className = 'p-2';
+
+        // Create buttons container
+        const buttonsContainer = document.createElement('div');
+        buttonsContainer.style.display = 'block';
+        buttonsContainer.style.marginBottom = '20px';
+
+        // Create "Rephrase problem" button - blue
+        const rephraseBtn = document.createElement('button');
+        rephraseBtn.style.display = 'block';
+        rephraseBtn.style.width = '100%';
+        rephraseBtn.style.padding = '12px';
+        rephraseBtn.style.marginBottom = '15px';
+        rephraseBtn.style.backgroundColor = '#2196F3'; // Bright blue
+        rephraseBtn.style.color = 'white';
+        rephraseBtn.style.fontWeight = 'bold';
+        rephraseBtn.style.border = 'none';
+        rephraseBtn.style.borderRadius = '4px';
+        rephraseBtn.style.cursor = 'pointer';
+        rephraseBtn.style.fontSize = '16px';
+        rephraseBtn.textContent = 'Rephrase problem';
+        rephraseBtn.id = 'rephrase-problem-btn';
+        buttonsContainer.appendChild(rephraseBtn);
+
+        // Create "Get just hints" button - orange
+        const hintsBtn = document.createElement('button');
+        hintsBtn.style.display = 'block';
+        hintsBtn.style.width = '100%';
+        hintsBtn.style.padding = '12px';
+        hintsBtn.style.marginBottom = '15px';
+        hintsBtn.style.backgroundColor = '#FF9800'; // Bright orange
+        hintsBtn.style.color = 'black';
+        hintsBtn.style.fontWeight = 'bold';
+        hintsBtn.style.border = 'none';
+        hintsBtn.style.borderRadius = '4px';
+        hintsBtn.style.cursor = 'pointer';
+        hintsBtn.style.fontSize = '16px';
+        hintsBtn.textContent = 'Get just hints';
+        hintsBtn.id = 'get-hints-btn';
+        buttonsContainer.appendChild(hintsBtn);
+
+        // Create "Full solution" button - green
+        const solutionBtn = document.createElement('button');
+        solutionBtn.style.display = 'block';
+        solutionBtn.style.width = '100%';
+        solutionBtn.style.padding = '12px';
+        solutionBtn.style.backgroundColor = '#4CAF50'; // Bright green
+        solutionBtn.style.color = 'white';
+        solutionBtn.style.fontWeight = 'bold';
+        solutionBtn.style.border = 'none';
+        solutionBtn.style.borderRadius = '4px';
+        solutionBtn.style.cursor = 'pointer';
+        solutionBtn.style.fontSize = '16px';
+        solutionBtn.textContent = `Full solution in ${language}`;
+        solutionBtn.id = 'full-solution-btn';
+        buttonsContainer.appendChild(solutionBtn);
+
+        helpText.appendChild(buttonsContainer);
+        content.appendChild(helpText);
+    };
+
+    /**
+     * Creates an empty action footer (removed language badge and button)
      * @returns {HTMLElement} The action footer element
      */
     const createActionFooter = () => {
         const actions = document.createElement('div');
-        actions.className = 'card-footer d-flex justify-content-between align-items-center';
-
-        // Create language label and badge in a container
-        const langContainer = document.createElement('div');
-        langContainer.className = 'd-flex align-items-center';
-
-        const langLabel = document.createElement('span');
-        langLabel.className = 'me-2 small';
-        langLabel.textContent = 'Language:';
-
-        const langBadge = document.createElement('span');
-        langBadge.id = 'current-lang-badge';
-        langBadge.className = 'badge bg-secondary';
-        langBadge.textContent = 'auto';
-
-        langContainer.appendChild(langLabel);
-        langContainer.appendChild(langBadge);
-
-        // Create enhanced help button with better styling
-        const getHelpBtn = document.createElement('button');
-        getHelpBtn.textContent = 'Get AI Help';
-        getHelpBtn.className = 'btn btn-primary btn-sm';
-        getHelpBtn.id = 'get-ai-help-btn';
-
-        // Add additional inline styles to make it more prominent
-        getHelpBtn.style.fontWeight = '600';
-        getHelpBtn.style.padding = '0.5rem 1rem';
-        getHelpBtn.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
-
-        // Add elements to footer
-        actions.appendChild(langContainer);
-        actions.appendChild(getHelpBtn);
-
+        actions.className = 'card-footer d-flex justify-content-end';
+        actions.style.display = 'none'; // Hide footer completely
         return actions;
     };
 
@@ -418,31 +465,6 @@ const UIManager = (() => {
         });
 
         return toggleBtn;
-    };
-
-    /**
-     * Shows initial help content in the panel
-     */
-    const showInitialHelp = () => {
-        const content = aiHelperPanel.querySelector('.card-body');
-        if (!content) return;
-
-        content.innerHTML = '';
-
-        const helpText = document.createElement('div');
-        helpText.className = 'p-2';
-        helpText.innerHTML = `
-      <h4 class="h5 mb-3">How can AI help you with this problem?</h4>
-      <ul class="list-group list-group-flush mb-3">
-        <li class="list-group-item bg-transparent">Understand the problem statement</li>
-        <li class="list-group-item bg-transparent">Get hints without full solutions</li>
-        <li class="list-group-item bg-transparent">See implementation strategies</li>
-        <li class="list-group-item bg-transparent">Debug your approach</li>
-      </ul>
-      <p class="text-center mb-0">Click "Get AI Help" to start.</p>
-    `;
-
-        content.appendChild(helpText);
     };
 
     /**
@@ -547,7 +569,6 @@ const UIManager = (() => {
 
         // Format and display the AI response
         responseContainer.innerHTML = `
-      <h4 class="h5 mb-3">AI Assistant</h4>
       <div class="ai-response-content mb-3">${TextProcessor.formatAiResponse(responseData.content)}</div>
     `;
 
@@ -572,6 +593,13 @@ const UIManager = (() => {
         });
 
         content.appendChild(responseContainer);
+
+        // Add back button
+        const backButton = document.createElement('button');
+        backButton.className = 'btn btn-sm btn-outline-secondary mt-3';
+        backButton.textContent = 'Back to menu';
+        backButton.addEventListener('click', showInitialHelp);
+        content.appendChild(backButton);
 
         // Add feedback buttons
         const feedbackDiv = document.createElement('div');
@@ -612,10 +640,9 @@ const UIManager = (() => {
      * @param {string} language Language to display
      */
     const updateLanguageBadge = (language) => {
-        const badge = document.getElementById('current-lang-badge');
-        if (badge) {
-            badge.textContent = language || 'auto';
-        }
+        // Language badge has been removed, but keep the function
+        // for compatibility with existing code
+        return;
     };
 
     /**
@@ -634,7 +661,8 @@ const UIManager = (() => {
         showApiKeyError,
         displayAiResponse,
         updateLanguageBadge,
-        getPanel
+        getPanel,
+        showInitialHelp
     };
 })();
 

@@ -23,17 +23,23 @@ const AiService = (() => {
     };
 
     /**
-     * Constructs a prompt for the AI based on problem details
+     * Constructs a prompt for the AI based on problem details and requested action
      * @param {string} title Problem title
      * @param {string} description Problem description
      * @param {string} language Target programming language
-     * @param {string} promptType Type of prompt ('solution', 'hint')
+     * @param {string} requestType Type of request ('rephrase', 'hints', 'solution')
      * @returns {string} Formatted prompt
      */
-    const constructPrompt = (title, description, language, promptType = 'solution') => {
-        return promptType === 'hint'
-            ? PromptBuilder.buildHintPrompt(title, description, language)
-            : PromptBuilder.buildCodingPrompt(title, description, language);
+    const constructPrompt = (title, description, language, requestType = 'solution') => {
+        switch(requestType) {
+            case 'rephrase':
+                return PromptBuilder.buildRephrasePrompt(title, description);
+            case 'hints':
+                return PromptBuilder.buildHintPrompt(title, description, language);
+            case 'solution':
+            default:
+                return PromptBuilder.buildSolutionPrompt(title, description, language);
+        }
     };
 
     // Public API
@@ -47,25 +53,14 @@ const AiService = (() => {
 if (typeof window !== 'undefined') {
     // Browser context (content scripts)
     window.AiService = AiService;
-    window.AiAdapterFactory = AiAdapterFactory;
-    window.PromptBuilder = PromptBuilder;
 } else if (typeof self !== 'undefined') {
     // Service worker context
     self.AiService = AiService;
-    self.AiAdapterFactory = AiAdapterFactory;
-    self.PromptBuilder = PromptBuilder;
 }
 
 // Support CommonJS modules if available
 if (typeof module !== 'undefined') {
     module.exports = {
-        AiService,
-        AiAdapterFactory,
-        PromptBuilder,
-        BaseAiAdapter,
-        OpenAiAdapter,
-        AnthropicAdapter,
-        GeminiAdapter,
-        CustomAdapter
+        AiService
     };
 }

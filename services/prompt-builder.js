@@ -5,27 +5,19 @@
 
 class PromptBuilder {
     /**
-     * Constructs a prompt for the AI based on problem details
+     * Builds a prompt for rephrasing and explaining the problem
      * @param {string} title Problem title
      * @param {string} description Problem description
-     * @param {string} language Target programming language
-     * @param {string} difficulty Problem difficulty (optional)
      * @returns {string} Formatted prompt
      */
-    static buildCodingPrompt(title, description, language, difficulty = '') {
+    static buildRephrasePrompt(title, description) {
         return `
-I'm solving the following LeetCode problem:
+Explain this LeetCode problem in simpler terms:
 
 Title: ${title}
-${difficulty ? `Difficulty: ${difficulty}` : ''}
-
 ${description}
 
-Please provide:
-1. A brief explanation of the problem
-2. An approach to solve it in ${language}
-3. Time and space complexity analysis
-4. A code solution in ${language}
+Simply rephrase the problem concisely, clarify any confusing parts, and provide one small example.
         `;
     }
 
@@ -38,17 +30,36 @@ Please provide:
      */
     static buildHintPrompt(title, description, language) {
         return `
-I'm solving the following LeetCode problem and would like some hints without the complete solution:
+Give hints for this LeetCode problem without revealing the full solution:
 
 Title: ${title}
-
 ${description}
 
-Please provide:
-1. A brief explanation of the problem
-2. Key insights or patterns to notice
-3. A high-level approach (pseudocode only)
-4. Common pitfalls to avoid when implementing in ${language}
+Provide:
+1. Key insights to notice
+2. A high-level approach (no complete code)
+3. Common pitfalls when implementing in ${language}
+        `;
+    }
+
+    /**
+     * Builds a prompt for a complete solution
+     * @param {string} title Problem title
+     * @param {string} description Problem description
+     * @param {string} language Target programming language
+     * @returns {string} Formatted prompt for full solution
+     */
+    static buildSolutionPrompt(title, description, language) {
+        return `
+Solve this LeetCode problem:
+
+Title: ${title}
+${description}
+
+Provide:
+1. Your approach to solving it in ${language}
+2. Time and space complexity analysis
+3. Complete code solution in ${language}
         `;
     }
 }

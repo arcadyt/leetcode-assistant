@@ -10,7 +10,7 @@ try {
         '../services/openai-adapter.js',
         '../services/anthropic-adapter.js',
         '../services/gemini-adapter.js',
-        '../services/custom-adapter.js',
+        '../services/ollama-adapter.js',
         '../services/adapter-factory.js',
         '../services/prompt-builder.js',
         '../services/ai-service.js'
@@ -33,7 +33,7 @@ const CACHE_EXPIRY = 24 * 60 * 60 * 1000;  // Cache expiry time (24 hours)
  * @returns {Promise<Object>} AI response
  */
 async function getAiAssistance(message) {
-    if (!message.problemData || !message.apiKey) {
+    if (!message.problemData) {
         throw new Error("Invalid request data");
     }
 
@@ -60,7 +60,8 @@ async function getAiAssistance(message) {
         const serviceType = settings.aiService || 'openai';
         const options = {};
 
-        if (serviceType === 'custom' && settings.endpoint) {
+        // Set endpoint for Ollama
+        if (serviceType === 'ollama' && settings.endpoint) {
             options.endpoint = settings.endpoint;
         }
 
@@ -143,7 +144,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     console.error('Error getting AI assistance:', error);
                     sendResponse({
                         success: false,
-                        error: error.message || "Failed to get AI assistance. Please check your API key and try again."
+                        error: error.message || "Failed to get AI assistance. Please check your settings and try again."
                     });
                 });
             // Return true to indicate we'll respond asynchronously

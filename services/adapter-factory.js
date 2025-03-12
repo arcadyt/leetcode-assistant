@@ -6,8 +6,8 @@
 class AiAdapterFactory {
     /**
      * Creates an appropriate adapter based on the service type
-     * @param {string} serviceType Type of AI service ('openai', 'anthropic', 'gemini', 'custom')
-     * @param {string} apiKey API key for the service
+     * @param {string} serviceType Type of AI service ('openai', 'anthropic', 'gemini', 'ollama')
+     * @param {string} apiKey API key for the service (not required for ollama)
      * @param {Object} options Additional options (model, endpoint, etc.)
      * @returns {BaseAiAdapter} The appropriate adapter instance
      * @throws {Error} If the service type is not supported
@@ -20,8 +20,8 @@ class AiAdapterFactory {
                 return new AnthropicAdapter(apiKey, options);
             case 'gemini':
                 return new GeminiAdapter(apiKey, options);
-            case 'custom':
-                return new CustomAdapter(apiKey, options);
+            case 'ollama':
+                return new OllamaAdapter('', options); // API key not required for Ollama
             default:
                 throw new Error(`Unsupported AI service: ${serviceType}`);
         }

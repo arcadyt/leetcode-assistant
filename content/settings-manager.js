@@ -9,7 +9,7 @@ const SettingsManager = (() => {
         { value: 'openai', label: 'OpenAI (GPT)' },
         { value: 'anthropic', label: 'Anthropic (Claude)' },
         { value: 'gemini', label: 'Google (Gemini)' },
-        { value: 'custom', label: 'Custom Endpoint' }
+        { value: 'ollama', label: 'DeepSeek on Ollama' }
     ];
 
     // Supported programming languages
@@ -78,21 +78,21 @@ const SettingsManager = (() => {
         apiKeyInput.id = 'ai-api-key';
         apiKeyInput.placeholder = 'Enter your API key';
 
-        // Custom endpoint input (initially hidden)
+        // Ollama endpoint input (initially hidden)
         const endpointGroup = document.createElement('div');
         endpointGroup.className = 'mb-3 d-none';
-        endpointGroup.id = 'custom-endpoint-group';
+        endpointGroup.id = 'ollama-endpoint-group';
 
         const endpointLabel = document.createElement('label');
         endpointLabel.className = 'form-label';
         endpointLabel.setAttribute('for', 'ai-endpoint');
-        endpointLabel.textContent = 'Custom Endpoint';
+        endpointLabel.textContent = 'Endpoint URL';
 
         const endpointInput = document.createElement('input');
         endpointInput.type = 'text';
         endpointInput.className = 'form-control form-control-sm';
         endpointInput.id = 'ai-endpoint';
-        endpointInput.placeholder = 'https://your-api-endpoint.com';
+        endpointInput.placeholder = 'http://localhost:11434/api/generate';
 
         // Language selection for solutions
         const langGroup = document.createElement('div');
@@ -172,9 +172,27 @@ const SettingsManager = (() => {
             elements.langSelect.value = settings.solutionLanguage;
         }
 
-        // Show/hide custom endpoint based on selected service
-        if (elements.endpointGroup) {
-            if (elements.aiServiceSelect.value === 'custom') {
+        // Show/hide elements based on selected service
+        updateFormVisibility(elements);
+    };
+
+    /**
+     * Updates the visibility of form elements based on selected service
+     * @param {Object} elements Form elements
+     */
+    const updateFormVisibility = (elements) => {
+        // Hide/show API key based on service
+        if (elements.apiKeyGroup && elements.aiServiceSelect) {
+            if (elements.aiServiceSelect.value === 'ollama') {
+                elements.apiKeyGroup.classList.add('d-none');
+            } else {
+                elements.apiKeyGroup.classList.remove('d-none');
+            }
+        }
+
+        // Show/hide endpoint based on selected service
+        if (elements.endpointGroup && elements.aiServiceSelect) {
+            if (elements.aiServiceSelect.value === 'ollama') {
                 elements.endpointGroup.classList.remove('d-none');
             } else {
                 elements.endpointGroup.classList.add('d-none');
@@ -188,14 +206,10 @@ const SettingsManager = (() => {
      * @param {Function} onSaved Callback when settings are saved
      */
     const setupSettingsListeners = (elements, onSaved) => {
-        // Show/hide custom endpoint based on AI service selection
-        if (elements.aiServiceSelect && elements.endpointGroup) {
+        // Update form visibility based on AI service selection
+        if (elements.aiServiceSelect) {
             elements.aiServiceSelect.addEventListener('change', function() {
-                if (this.value === 'custom') {
-                    elements.endpointGroup.classList.remove('d-none');
-                } else {
-                    elements.endpointGroup.classList.add('d-none');
-                }
+                updateFormVisibility(elements);
             });
         }
 
@@ -216,11 +230,12 @@ const SettingsManager = (() => {
      * @returns {Promise<Object>} Saved settings
      */
     const saveCurrentSettings = async (elements) => {
+        const isOllama = elements.aiServiceSelect && elements.aiServiceSelect.value === 'ollama';
+
         const settings = {
             aiService: elements.aiServiceSelect ? elements.aiServiceSelect.value : 'openai',
-            apiKey: elements.apiKeyInput ? elements.apiKeyInput.value : '',
-            endpoint: elements.aiServiceSelect && elements.aiServiceSelect.value === 'custom' ?
-                (elements.endpointInput ? elements.endpointInput.value : '') : '',
+            apiKey: isOllama ? '' : (elements.apiKeyInput ? elements.apiKeyInput.value : ''),
+            endpoint: isOllama ? (elements.endpointInput ? elements.endpointInput.value : '') : '',
             solutionLanguage: elements.langSelect ? elements.langSelect.value : 'auto',
             minimizedByDefault: false // Default value
         };
@@ -287,6 +302,7 @@ const SettingsManager = (() => {
         showSaveSuccess,
         getTargetLanguage,
         updateLanguageBadge,
+        updateFormVisibility,
         AI_SERVICES,
         PROGRAMMING_LANGUAGES
     };

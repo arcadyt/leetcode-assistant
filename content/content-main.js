@@ -65,9 +65,11 @@
     }
 
     /**
-     * Handles the request for problem rephrasing
+     * Common function to check API key requirements and prepare request
+     * @param {string} requestType The type of request (rephrase, hints, solution)
+     * @param {string} loadingMessage Message to show during loading
      */
-    async function requestProblemRephrase() {
+    async function makeAiRequest(requestType, loadingMessage) {
         const problemData = ProblemDetector.getCurrentProblemData();
         if (!problemData) {
             console.error("No problem data available");
@@ -77,119 +79,61 @@
         // Get user settings
         const settings = await StorageUtils.getSettings();
 
-        // Check if API key is set (except for custom endpoints)
-        if (!settings.apiKey && settings.aiService !== 'custom') {
+        // Check if API key is set (except for Ollama)
+        if (settings.aiService !== 'ollama' && !settings.apiKey) {
             UIManager.showApiKeyError();
             return;
         }
 
-        // Show loading state
-        UIManager.showLoading("Rephrasing problem...");
+        // Check if Ollama endpoint is set when using Ollama
+        if (settings.aiService === 'ollama' && !settings.endpoint) {
+            UIManager.showError("Endpoint URL is required. Please set it in the settings.");
+            return;
+        }
 
-        // Get the target language for context
+        // Show loading state
+        UIManager.showLoading(loadingMessage);
+
+        // Get the target language
         const targetLanguage = await SettingsManager.getTargetLanguage(problemData);
 
         // Request AI assistance
         chrome.runtime.sendMessage({
             action: "GET_AI_HELP",
-            requestType: "rephrase",
+            requestType: requestType,
             problemData: {
                 title: problemData.title,
                 description: problemData.description,
                 problemSlug: problemData.problemSlug
             },
+            language: targetLanguage,
             settings: {
                 aiService: settings.aiService || 'openai',
                 endpoint: settings.endpoint || ''
             },
             apiKey: settings.apiKey
         }, handleAiResponse);
+    }
+
+    /**
+     * Handles the request for problem rephrasing
+     */
+    async function requestProblemRephrase() {
+        await makeAiRequest("rephrase", "Rephrasing problem...");
     }
 
     /**
      * Handles the request for hints
      */
     async function requestHints() {
-        const problemData = ProblemDetector.getCurrentProblemData();
-        if (!problemData) {
-            console.error("No problem data available");
-            return;
-        }
-
-        // Get user settings
-        const settings = await StorageUtils.getSettings();
-
-        // Check if API key is set (except for custom endpoints)
-        if (!settings.apiKey && settings.aiService !== 'custom') {
-            UIManager.showApiKeyError();
-            return;
-        }
-
-        // Show loading state
-        UIManager.showLoading("Getting hints...");
-
-        // Get the target language
-        const targetLanguage = await SettingsManager.getTargetLanguage(problemData);
-
-        // Request AI assistance
-        chrome.runtime.sendMessage({
-            action: "GET_AI_HELP",
-            requestType: "hints",
-            problemData: {
-                title: problemData.title,
-                description: problemData.description,
-                problemSlug: problemData.problemSlug
-            },
-            language: targetLanguage,
-            settings: {
-                aiService: settings.aiService || 'openai',
-                endpoint: settings.endpoint || ''
-            },
-            apiKey: settings.apiKey
-        }, handleAiResponse);
+        await makeAiRequest("hints", "Getting hints...");
     }
 
     /**
      * Handles the request for full solution
      */
     async function requestFullSolution() {
-        const problemData = ProblemDetector.getCurrentProblemData();
-        if (!problemData) {
-            console.error("No problem data available");
-            return;
-        }
-
-        // Get user settings
-        const settings = await StorageUtils.getSettings();
-
-        // Check if API key is set (except for custom endpoints)
-        if (!settings.apiKey && settings.aiService !== 'custom') {
-            UIManager.showApiKeyError();
-            return;
-        }
-
-        // Show loading state
-        UIManager.showLoading("Getting full solution...");
-
-        // Get the target language
-        const targetLanguage = await SettingsManager.getTargetLanguage(problemData);
-
-        // Request AI assistance
-        chrome.runtime.sendMessage({
-            action: "GET_AI_HELP",
-            requestType: "solution",
-            problemData: {
-                title: problemData.title,
-                description: problemData.description,
-                problemSlug: problemData.problemSlug
-            },
-            language: targetLanguage,
-            settings: {
-                aiService: settings.aiService || 'openai',
-                endpoint: settings.endpoint || ''
-            },
-            apiKey: settings.apiKey
-        }, handleAiResponse);
+        await makeAiRequest("solution", "Getting full solution...");
     }
 
     /**

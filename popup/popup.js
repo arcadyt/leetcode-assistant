@@ -6,8 +6,9 @@
 // DOM Elements
 const aiServiceSelect = document.getElementById('ai-service-select');
 const apiKeyInput = document.getElementById('api-key');
-const customEndpointGroup = document.getElementById('custom-endpoint-group');
-const customEndpointInput = document.getElementById('custom-endpoint');
+const apiKeyGroup = document.getElementById('api-key-group');
+const ollamaEndpointGroup = document.getElementById('ollama-endpoint-group');
+const ollamaEndpointInput = document.getElementById('custom-endpoint');
 const languageSelect = document.getElementById('solution-lang-select');
 const saveButton = document.getElementById('save-settings');
 const settingsToggle = document.getElementById('settings-toggle');
@@ -32,22 +33,24 @@ function loadSettings() {
         // Update UI with saved settings
         aiServiceSelect.value = settings.aiService || DEFAULT_SETTINGS.aiService;
         apiKeyInput.value = settings.apiKey || '';
-        customEndpointInput.value = settings.endpoint || '';
+        ollamaEndpointInput.value = settings.endpoint || '';
         languageSelect.value = settings.solutionLanguage || DEFAULT_SETTINGS.solutionLanguage;
 
-        // Show/hide custom endpoint based on selected service
-        toggleCustomEndpointVisibility();
+        // Update form visibility based on selected service
+        updateFormVisibility();
     });
 }
 
 /**
- * Toggle visibility of custom endpoint input based on selected AI service
+ * Toggle visibility of form elements based on selected AI service
  */
-function toggleCustomEndpointVisibility() {
-    if (aiServiceSelect.value === 'custom') {
-        customEndpointGroup.classList.remove('d-none');
+function updateFormVisibility() {
+    if (aiServiceSelect.value === 'ollama') {
+        ollamaEndpointGroup.classList.remove('d-none');
+        apiKeyGroup.classList.add('d-none');
     } else {
-        customEndpointGroup.classList.add('d-none');
+        ollamaEndpointGroup.classList.add('d-none');
+        apiKeyGroup.classList.remove('d-none');
     }
 }
 
@@ -55,10 +58,12 @@ function toggleCustomEndpointVisibility() {
  * Save settings to storage
  */
 function saveSettings() {
+    const isOllama = aiServiceSelect.value === 'ollama';
+
     const settings = {
         aiService: aiServiceSelect.value,
-        apiKey: apiKeyInput.value,
-        endpoint: aiServiceSelect.value === 'custom' ? customEndpointInput.value : '',
+        apiKey: isOllama ? '' : apiKeyInput.value,
+        endpoint: isOllama ? ollamaEndpointInput.value : '',
         solutionLanguage: languageSelect.value,
         minimizedByDefault: false // Default value
     };
@@ -81,7 +86,7 @@ function saveSettings() {
             toggleSettings();
         }
 
-        // Send message to update any open tabs with the new language
+        // Send message to update any open tabs with the new settings
         chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
             if (tabs[0]) {
                 chrome.tabs.sendMessage(tabs[0].id, {
@@ -115,7 +120,7 @@ function initialize() {
     loadSettings();
 
     // Set up event listeners
-    aiServiceSelect.addEventListener('change', toggleCustomEndpointVisibility);
+    aiServiceSelect.addEventListener('change', updateFormVisibility);
     saveButton.addEventListener('click', saveSettings);
 
     // Add toggle functionality for settings

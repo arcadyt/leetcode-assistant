@@ -56,20 +56,20 @@
                     <option value="openai">OpenAI (GPT)</option>
                     <option value="anthropic">Anthropic (Claude)</option>
                     <option value="gemini">Google (Gemini)</option>
-                    <option value="custom">Custom Endpoint</option>
+                    <option value="ollama">DeepSeek on Ollama</option>
                 </select>
             </div>
 
             <!-- API Key -->
-            <div class="mb-3">
+            <div class="mb-3" id="api-key-group">
                 <label for="api-key" class="form-label">API Key</label>
                 <input type="password" id="api-key" class="form-control form-control-sm bg-dark text-light border-secondary" placeholder="Enter your API key">
             </div>
 
-            <!-- Custom Endpoint (hidden by default) -->
-            <div id="custom-endpoint-group" class="mb-3 d-none">
-                <label for="custom-endpoint" class="form-label">Custom Endpoint</label>
-                <input type="text" id="custom-endpoint" class="form-control form-control-sm bg-dark text-light border-secondary" placeholder="https://your-api-endpoint.com">
+            <!-- Ollama Endpoint (hidden by default) -->
+            <div id="ollama-endpoint-group" class="mb-3 d-none">
+                <label for="custom-endpoint" class="form-label">Endpoint URL</label>
+                <input type="text" id="custom-endpoint" class="form-control form-control-sm bg-dark text-light border-secondary" placeholder="http://localhost:11434/api/generate">
             </div>
 
             <!-- Language Selection -->

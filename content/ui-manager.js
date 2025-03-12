@@ -199,20 +199,20 @@ const UIManager = (() => {
         apiKeyInput.id = 'ai-api-key';
         apiKeyInput.placeholder = 'Enter your API key';
 
-        // Custom endpoint input
+        // Ollama endpoint input
         const endpointLabel = document.createElement('label');
         endpointLabel.setAttribute('for', 'ai-endpoint');
-        endpointLabel.textContent = 'Custom Endpoint';
+        endpointLabel.textContent = 'Endpoint URL';
 
         const endpointInput = document.createElement('input');
         endpointInput.type = 'text';
         endpointInput.className = 'form-control form-control-sm';
         endpointInput.id = 'ai-endpoint';
-        endpointInput.placeholder = 'https://your-api-endpoint.com';
+        endpointInput.placeholder = 'http://localhost:11434/api/generate';
 
         // Create endpoint container for conditional display
         const endpointContainer = document.createElement('div');
-        endpointContainer.id = 'custom-endpoint-group';
+        endpointContainer.id = 'ollama-endpoint-group';
         endpointContainer.style.display = 'none';
         endpointContainer.style.gridColumn = '1 / span 2';
 
@@ -314,21 +314,43 @@ const UIManager = (() => {
     const setupSettingsEventHandlers = (formElements) => {
         const { elements, saveSettingsBtn } = formElements;
 
-        // Toggle custom endpoint visibility
+        // Toggle visibility based on service
         elements.aiServiceSelect.addEventListener('change', function() {
-            if (this.value === 'custom') {
+            if (this.value === 'ollama') {
                 formElements.groups.endpointContainer.style.display = 'grid';
+
+                // Hide API key since it's not needed for Ollama
+                const apiKeyRow = elements.apiKeyInput.closest('.grid-row');
+                if (apiKeyRow) {
+                    apiKeyRow.style.display = 'none';
+                } else {
+                    // Fallback if we can't find the row
+                    elements.apiKeyInput.style.display = 'none';
+                    elements.apiKeyInput.previousElementSibling.style.display = 'none';
+                }
             } else {
                 formElements.groups.endpointContainer.style.display = 'none';
+
+                // Show API key for other services
+                const apiKeyRow = elements.apiKeyInput.closest('.grid-row');
+                if (apiKeyRow) {
+                    apiKeyRow.style.display = 'grid';
+                } else {
+                    // Fallback if we can't find the row
+                    elements.apiKeyInput.style.display = 'block';
+                    elements.apiKeyInput.previousElementSibling.style.display = 'block';
+                }
             }
         });
 
         // Save settings button
         saveSettingsBtn.addEventListener('click', async () => {
+            const isOllama = elements.aiServiceSelect.value === 'ollama';
+
             const settings = {
                 aiService: elements.aiServiceSelect.value,
-                apiKey: elements.apiKeyInput.value,
-                endpoint: elements.aiServiceSelect.value === 'custom' ? elements.endpointInput.value : '',
+                apiKey: isOllama ? '' : elements.apiKeyInput.value,
+                endpoint: isOllama ? elements.endpointInput.value : '',
                 solutionLanguage: elements.langSelect.value,
                 minimizedByDefault: false // Default value
             };
@@ -521,18 +543,34 @@ const UIManager = (() => {
     /**
      * Shows API key missing error and focuses on settings
      */
-    const showApiKeyError = () => {
+    /**
+     * Shows API key missing error and focuses on settings
+     */
+    const showApiKeyError = async () => {
         const content = aiHelperPanel.querySelector('.card-body');
         if (!content) return;
+
+        // Get current settings to determine which service is selected
+        const settings = await StorageUtils.getSettings();
+        const isOllama = settings.aiService === 'ollama';
 
         content.innerHTML = '';
 
         const errorDiv = document.createElement('div');
         errorDiv.className = 'alert alert-warning mx-3 my-4';
-        errorDiv.innerHTML = `
-      <h5 class="alert-heading">API Key Required</h5>
-      <p>Please set your API key in the settings section below.</p>
-    `;
+
+        if (isOllama) {
+            errorDiv.innerHTML = `
+            <h5 class="alert-heading">Ollama Endpoint Required</h5>
+            <p>Please set the Ollama endpoint URL in the settings section below.</p>
+        `;
+        } else {
+            errorDiv.innerHTML = `
+            <h5 class="alert-heading">API Key Required</h5>
+            <p>Please set your API key in the settings section below.</p>
+        `;
+        }
+
         content.appendChild(errorDiv);
 
         // Expand settings if they're collapsed
@@ -544,10 +582,17 @@ const UIManager = (() => {
             settingsToggle.innerHTML = '⚙️ <span class="ms-2">Hide Settings</span>';
         }
 
-        // Focus on the API key input
-        const apiKeyInput = document.getElementById('ai-api-key');
-        if (apiKeyInput) {
-            apiKeyInput.focus();
+        // Focus on the appropriate input field
+        if (isOllama) {
+            const endpointInput = document.getElementById('ai-endpoint');
+            if (endpointInput) {
+                endpointInput.focus();
+            }
+        } else {
+            const apiKeyInput = document.getElementById('ai-api-key');
+            if (apiKeyInput) {
+                apiKeyInput.focus();
+            }
         }
     };
 

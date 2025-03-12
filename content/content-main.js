@@ -14,7 +14,7 @@
             return;
         }
 
-        console.log("AI Coding Helper: LeetCode problem detected");
+        console.log("LeetCode Assistant: LeetCode problem detected");
 
         try {
             // Extract problem data
@@ -33,7 +33,7 @@
                 problemData: problemData
             });
         } catch (error) {
-            console.error("Error initializing AI Coding Helper:", error);
+            console.error("Error initializing LeetCode Assistant:", error);
         }
     }
 

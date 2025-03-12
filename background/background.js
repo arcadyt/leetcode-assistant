@@ -162,4 +162,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 });
 
-console.log('AI Coding Helper background script loaded');
+console.log('LeetCode Assistant background script loaded');

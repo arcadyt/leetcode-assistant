@@ -78,7 +78,7 @@ const UIManager = (() => {
 
         const title = document.createElement('h5');
         title.className = 'mb-0';
-        title.textContent = 'AI Coding Helper';
+        title.textContent = 'LeetCode Assistant';
 
         const closeBtn = document.createElement('button');
         closeBtn.className = 'btn-close btn-close-white';

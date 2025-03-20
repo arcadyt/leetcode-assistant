@@ -1,29 +1,26 @@
 /**
  * ollama-adapter.js
- * Adapter for Ollama local API with precise response text extraction
+ * Adapter for Ollama local API
  */
 
 class OllamaAdapter extends BaseAiAdapter {
     /**
-     * Calls the Ollama API with exact payload specification
+     * Calls the Ollama API
      * @param {string} prompt The prompt to send
      * @returns {Promise<string>} AI response
      */
     async callService(prompt) {
         // Validate endpoint configuration
         if (!this.options.endpoint) {
-            throw new Error("Ollama endpoint URL is required. Please set it in the settings.");
+            throw new Error("Ollama endpoint URL is required");
         }
 
         // Sanitize and validate endpoint URL
         const endpoint = this.sanitizeEndpoint(this.options.endpoint);
+        console.log("Calling Ollama at:", endpoint);
 
-        // Prepare request configuration matching Ollama's exact payload structure
-        const requestConfig = {
-            model: this.options.model || 'deepseek-r1:14b',
-            prompt: prompt,
-            stream: false
-        };
+        // Use the correct model for deepseek on Ollama
+        const model = this.options.model || 'deepseek-r1:14b';
 
         try {
             const response = await fetch(endpoint, {
@@ -31,13 +28,16 @@ class OllamaAdapter extends BaseAiAdapter {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(requestConfig)
+                body: JSON.stringify({
+                    model: model,
+                    prompt: prompt,
+                    stream: false
+                })
             });
 
-            // Comprehensive error handling
             if (!response.ok) {
-                const errorBody = await response.text();
-                throw new Error(`Ollama API error: ${response.status} ${response.statusText} - ${errorBody}`);
+                const errorText = await response.text();
+                throw new Error(`${response.status} ${response.statusText}: ${errorText}`);
             }
 
             const data = await response.json();
@@ -47,58 +47,48 @@ class OllamaAdapter extends BaseAiAdapter {
                 throw new Error("Invalid response format from Ollama API");
             }
 
-            // Extract and clean the response text
-            return this.extractResponseText(data.response);
+            return data.response;
         } catch (error) {
-            console.error("Ollama API call failed:", error);
+            console.error("Ollama request failed:", error);
             throw this.formatError(error);
         }
     }
 
     /**
-     * Extracts clean response text
-     * @param {string} rawResponse Raw response from Ollama
-     * @returns {string} Cleaned response text
+     * Format Ollama-specific error messages
      */
-    extractResponseText(rawResponse) {
-        // Remove everything up to and including </think> and consecutive newlines
-        const cleanedResponse = rawResponse.replace(/.*<\/think>\n*/s, '');
-        return cleanedResponse.trim();
+    formatError(error) {
+        // Connection issues
+        if (error.message.includes('fetch failed') ||
+            error.message.includes('Failed to fetch')) {
+            return `Connection to Ollama failed. Check that Ollama is running and the endpoint URL is correct.`;
+        }
+
+        return `Ollama API error: ${error.message}`;
     }
 
     /**
      * Sanitizes and validates the Ollama endpoint URL
-     * @param {string} endpoint Raw endpoint URL
-     * @returns {string} Sanitized endpoint URL
      */
     sanitizeEndpoint(endpoint) {
-        // Remove trailing slashes and add default generate path if missing
-        let sanitizedUrl = endpoint.trim().replace(/\/+$/, '');
+        // Remove trailing slashes and whitespace
+        let url = endpoint.trim().replace(/\/+$/, '');
 
-        // If no path specified, append default generate path
-        if (!sanitizedUrl.includes('/api/generate')) {
-            sanitizedUrl += '/api/generate';
+        // Ensure URL has a protocol
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            url = 'http://' + url;
         }
 
-        return sanitizedUrl;
-    }
-
-    /**
-     * Format Ollama-specific error messages
-     * @param {Error} error The error object
-     * @returns {string} Formatted error message
-     */
-    formatError(error) {
-        // Provide more context about potential configuration issues
-        if (error.message.includes('fetch failed')) {
-            return `Ollama connection error. Check your endpoint URL and ensure Ollama is running. Details: ${error.message}`;
+        // Add API path if missing
+        if (!url.includes('/api/generate')) {
+            url += '/api/generate';
         }
 
-        return `Ollama API error: ${error.message || 'Unknown connection issue'}`;
+        return url;
     }
 }
 
-// Make available in current context (works in both service worker and browser)
+// Make available in global scope
 if (typeof self !== 'undefined') {
     self.OllamaAdapter = OllamaAdapter;
 }

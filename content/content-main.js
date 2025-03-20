@@ -1,7 +1,6 @@
 /**
  * content-main.js
  * Main entry point for content script
- * Coordinates between the different modules
  */
 
 (function() {
@@ -9,31 +8,29 @@
      * Initializes the extension
      */
     async function initialize() {
-        // Check if we're on a LeetCode problem page
         if (!ProblemDetector.isLeetCodeProblemPage()) {
             return;
         }
 
-        console.log("LeetCode Assistant: LeetCode problem detected");
+        console.log("LeetCode problem detected");
 
         try {
             // Extract problem data
             const problemData = await ProblemDetector.extractProblemData();
-            console.log("Problem data extracted:", problemData);
 
             // Create UI
-            const panel = await UIManager.createAIHelperPanel();
+            await UIManager.createAIHelperPanel();
 
-            // Set up event listeners for the UI
+            // Set up event listeners
             setupEventListeners();
 
-            // Notify background script about the detected problem
-            chrome.runtime.sendMessage({
+            // Notify background script
+            MessagingUtils.sendMessage({
                 action: "PROBLEM_DETECTED",
                 problemData: problemData
             });
         } catch (error) {
-            console.error("Error initializing LeetCode Assistant:", error);
+            console.error("Initialization error:", error);
         }
     }
 
@@ -41,13 +38,11 @@
      * Sets up event listeners for user interactions
      */
     function setupEventListeners() {
-        // Use event delegation for all button clicks in the panel
+        // Use event delegation for button clicks
         document.addEventListener('click', function(event) {
-            // Find the closest button that was clicked
             const button = event.target.closest('button');
             if (!button) return;
 
-            // Handle different button clicks based on ID
             switch (button.id) {
                 case 'rephrase-problem-btn':
                     requestProblemRephrase();
@@ -58,16 +53,12 @@
                 case 'full-solution-btn':
                     requestFullSolution();
                     break;
-
-                // No default action needed
             }
         });
     }
 
     /**
-     * Common function to check API key requirements and prepare request
-     * @param {string} requestType The type of request (rephrase, hints, solution)
-     * @param {string} loadingMessage Message to show during loading
+     * Common function to prepare and send AI requests
      */
     async function makeAiRequest(requestType, loadingMessage) {
         const problemData = ProblemDetector.getCurrentProblemData();
@@ -76,101 +67,87 @@
             return;
         }
 
-        // Get user settings
         const settings = await StorageUtils.getSettings();
 
-        // Check if API key is set (except for Ollama)
-        if (settings.aiService !== 'ollama' && !settings.apiKey) {
-            UIManager.showApiKeyError();
+        // Validate settings
+        if (settings.aiService === 'ollama' && !settings.endpoint) {
+            UIManager.showError("Endpoint URL is required for Ollama");
             return;
         }
 
-        // Check if Ollama endpoint is set when using Ollama
-        if (settings.aiService === 'ollama' && !settings.endpoint) {
-            UIManager.showError("Endpoint URL is required. Please set it in the settings.");
+        if (settings.aiService !== 'ollama' && !settings.apiKey) {
+            UIManager.showApiKeyError();
             return;
         }
 
         // Show loading state
         UIManager.showLoading(loadingMessage);
 
-        // Get the target language
+        // Get target language
         const targetLanguage = await SettingsManager.getTargetLanguage(problemData);
 
-        // Request AI assistance
-        chrome.runtime.sendMessage({
-            action: "GET_AI_HELP",
-            requestType: requestType,
-            problemData: {
-                title: problemData.title,
-                description: problemData.description,
-                problemSlug: problemData.problemSlug
-            },
-            language: targetLanguage,
-            settings: {
-                aiService: settings.aiService || 'openai',
-                endpoint: settings.endpoint || ''
-            },
-            apiKey: settings.apiKey
-        }, handleAiResponse);
+        try {
+            // Send request to background script
+            const response = await MessagingUtils.sendMessage({
+                action: "GET_AI_HELP",
+                requestType: requestType,
+                problemData: {
+                    title: problemData.title,
+                    description: problemData.description,
+                    problemSlug: problemData.problemSlug
+                },
+                language: targetLanguage,
+                settings: {
+                    aiService: settings.aiService,
+                    endpoint: settings.endpoint,
+                    model: 'deepseek-r1:14b' // Correct model for Ollama
+                },
+                apiKey: settings.apiKey
+            });
+
+            handleAiResponse(response);
+        } catch (error) {
+            UIManager.showError(error.message);
+        }
+    }
+
+    // Request functions
+    function requestProblemRephrase() {
+        makeAiRequest("rephrase", "Rephrasing problem...");
+    }
+
+    function requestHints() {
+        makeAiRequest("hints", "Getting hints...");
+    }
+
+    function requestFullSolution() {
+        makeAiRequest("solution", "Getting full solution...");
     }
 
     /**
-     * Handles the request for problem rephrasing
-     */
-    async function requestProblemRephrase() {
-        await makeAiRequest("rephrase", "Rephrasing problem...");
-    }
-
-    /**
-     * Handles the request for hints
-     */
-    async function requestHints() {
-        await makeAiRequest("hints", "Getting hints...");
-    }
-
-    /**
-     * Handles the request for full solution
-     */
-    async function requestFullSolution() {
-        await makeAiRequest("solution", "Getting full solution...");
-    }
-
-    /**
-     * Handles the AI response from the background script
-     * @param {Object} response The response from the background script
+     * Handles the AI response
      */
     function handleAiResponse(response) {
         if (response && response.success) {
-            // Save response to cache
+            // Save to cache
             const problemSlug = ProblemDetector.getProblemSlug();
             StorageUtils.saveAiResponse(problemSlug, response.data);
 
-            // Display the response
+            // Display response
             UIManager.displayAiResponse(response.data);
         } else {
-            // Display error message
+            // Show error with retry
             UIManager.showError(
-                response ? response.error : "Failed to get AI assistance",
+                response?.error || "Failed to get AI assistance",
                 () => {
-                    // Determine which function to retry based on the request type
-                    if (response && response.data && response.data.requestType) {
+                    if (response?.data?.requestType) {
                         switch (response.data.requestType) {
-                            case 'rephrase':
-                                requestProblemRephrase();
-                                break;
-                            case 'hints':
-                                requestHints();
-                                break;
-                            case 'solution':
-                                requestFullSolution();
-                                break;
-                            default:
-                                // Default to menu if type not recognized
-                                UIManager.showInitialHelp();
+                            case 'rephrase': requestProblemRephrase(); break;
+                            case 'hints': requestHints(); break;
+                            case 'solution': requestFullSolution(); break;
+                            default: UIManager.showInitialHelp(); break;
                         }
                     } else {
-                        // Return to menu if request type not available
                         UIManager.showInitialHelp();
                     }
                 }
@@ -178,21 +155,23 @@
         }
     }
 
-    // Listen for messages from the background script or popup
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        if (message.action === "UPDATE_AI_RESPONSE" && message.data) {
-            UIManager.displayAiResponse(message.data);
+    // Set up message listener
+    MessagingUtils.createMessageListener({
+        "UPDATE_AI_RESPONSE": (message) => {
+            if (message.data) {
+                UIManager.displayAiResponse(message.data);
+            }
+            return { success: true };
+        },
+        "SETTINGS_UPDATED": (message) => {
+            if (message.settings) {
+                UIManager.showInitialHelp();
+            }
+            return { success: true };
         }
-        else if (message.action === "SETTINGS_UPDATED" && message.settings) {
-            // Update the UI when settings are updated from the popup
-            UIManager.showInitialHelp();
-        }
-
-        // Always return true for async response
-        return true;
     });
 
-    // Initialize when the DOM is fully loaded
+    // Initialize when DOM is ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initialize);
     } else {

@@ -3,9 +3,10 @@
  * Background script for the extension that handles API communication
  */
 
-// Load service scripts in correct order
+// Load service scripts
 try {
     importScripts(
+        '../utils/messaging-utils.js',
         '../services/base-adapter.js',
         '../services/openai-adapter.js',
         '../services/anthropic-adapter.js',
@@ -15,26 +16,22 @@ try {
         '../services/prompt-builder.js',
         '../services/ai-service.js'
     );
-    console.log('Successfully loaded service scripts');
+    console.log('Service scripts loaded');
 } catch (e) {
-    console.error('Error loading service scripts:', e);
+    console.error('Error loading scripts:', e);
 }
 
 // Cache for AI responses
 const responseCache = new Map();
-
-// Constants
-const MAX_CACHE_SIZE = 20;  // Maximum number of cached responses
-const CACHE_EXPIRY = 24 * 60 * 60 * 1000;  // Cache expiry time (24 hours)
+const MAX_CACHE_SIZE = 20;
+const CACHE_EXPIRY = 24 * 60 * 60 * 1000;  // 24 hours
 
 /**
- * Handles the AI assistance request
- * @param {Object} message Message containing request details
- * @returns {Promise<Object>} AI response
+ * Gets AI assistance for a problem
  */
 async function getAiAssistance(message) {
     if (!message.problemData) {
-        throw new Error("Invalid request data");
+        throw new Error("Invalid request: missing problem data");
     }
 
     const { title, description, problemSlug } = message.problemData;
@@ -43,10 +40,8 @@ async function getAiAssistance(message) {
     const apiKey = message.apiKey;
     const settings = message.settings || {};
 
-    // Generate cache key
+    // Check cache
     const cacheKey = `${problemSlug}_${requestType}_${language}`;
-
-    // Check for cached response
     if (responseCache.has(cacheKey)) {
         const cachedResponse = responseCache.get(cacheKey);
         if (Date.now() - cachedResponse.timestamp < CACHE_EXPIRY) {
@@ -56,16 +51,18 @@ async function getAiAssistance(message) {
     }
 
     try {
-        // Get service type and options
+        // Prepare options
         const serviceType = settings.aiService || 'openai';
-        const options = {};
+        const options = {
+            model: settings.model
+        };
 
         // Set endpoint for Ollama
         if (serviceType === 'ollama' && settings.endpoint) {
             options.endpoint = settings.endpoint;
         }
 
-        // Build the appropriate prompt based on request type
+        // Build prompt
         const prompt = AiService.constructPrompt(
             title,
             description,
@@ -73,10 +70,10 @@ async function getAiAssistance(message) {
             requestType
         );
 
-        // Call the AI service
+        // Call service
         const response = await AiService.callService(serviceType, prompt, apiKey, options);
 
-        // Format the response data
+        // Format and cache response
         const responseData = {
             content: response,
             language: language,
@@ -84,81 +81,61 @@ async function getAiAssistance(message) {
             timestamp: Date.now()
         };
 
-        // Cache the response
         cacheResponse(cacheKey, responseData);
-
         return responseData;
     } catch (error) {
-        console.error('Error calling AI service:', error);
+        console.error('AI service error:', error);
         throw error;
     }
 }
 
 /**
- * Caches the AI response
- * @param {string} key Cache key
- * @param {Object} responseData Response data to cache
+ * Caches a response
  */
-function cacheResponse(key, responseData) {
+function cacheResponse(key, data) {
     // Maintain cache size
     if (responseCache.size >= MAX_CACHE_SIZE) {
-        // Remove the oldest entry
         const oldestKey = responseCache.keys().next().value;
         responseCache.delete(oldestKey);
     }
 
-    // Add new response to cache
-    responseCache.set(key, responseData);
+    responseCache.set(key, data);
 }
 
 /**
- * Handles user feedback
- * @param {Object} feedback Feedback data
+ * Logs user feedback
  */
 function handleFeedback(feedback) {
-    // Log feedback for now, in a production extension this would send the feedback to a server
     console.log('User feedback received:', feedback);
-
-    // Could implement additional logic here to improve AI responses based on feedback
+    // In a production extension, this would send feedback to a server
 }
 
-// Listen for messages from content scripts
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log('Background script received message:', message.action);
+// Set up message handlers
+MessagingUtils.createMessageListener({
+    // Handle problem detection
+    "PROBLEM_DETECTED": (message) => {
+        console.log('Problem detected:', message.problemData?.title);
+        return { success: true };
+    },
 
-    switch (message.action) {
-        case 'PROBLEM_DETECTED':
-            // Problem detected, we could pre-fetch AI response if we want
-            console.log('Problem detected:', message.problemData?.title);
-            // Send immediate response
-            sendResponse({ success: true });
-            break;
+    // Handle AI assistance requests
+    "GET_AI_HELP": async (message) => {
+        try {
+            const response = await getAiAssistance(message);
+            return { success: true, data: response };
+        } catch (error) {
+            return {
+                success: false,
+                error: error.message || "Failed to get AI assistance",
+                data: { requestType: message.requestType }
+            };
+        }
+    },
 
-        case 'GET_AI_HELP':
-            // Get AI assistance for the problem
-            getAiAssistance(message)
-                .then(response => {
-                    sendResponse({ success: true, data: response });
-                })
-                .catch(error => {
-                    console.error('Error getting AI assistance:', error);
-                    sendResponse({
-                        success: false,
-                        error: error.message || "Failed to get AI assistance. Please check your settings and try again."
-                    });
-                });
-            // Return true to indicate we'll respond asynchronously
-            return true;
-
-        case 'SUBMIT_FEEDBACK':
-            // Handle user feedback
-            handleFeedback(message.feedback);
-            sendResponse({ success: true });
-            break;
-
-        default:
-            console.warn('Unknown message action:', message.action);
-            sendResponse({ success: false, error: 'Unknown action' });
+    // Handle feedback
+    "SUBMIT_FEEDBACK": (message) => {
+        handleFeedback(message.feedback);
+        return { success: true };
     }
 });
 
